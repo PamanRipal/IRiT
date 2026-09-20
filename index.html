@@ -1,0 +1,2543 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#2B2A28" />
+    <meta name="description" content="IRiT - Ingat Riwayat Transaksi. Aplikasi pencatatan keuangan rumah tangga — pemasukan, pengeluaran, dompet, pindah dompet, kategori & budget, bandingkan harga toko, dan laporan. Data tersimpan langsung di perangkatmu." />
+
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="IRiT" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <title>IRiT - Ingat Riwayat Transaksi</title>
+
+    <style>
+      :root { color-scheme: light; }
+      * { -webkit-tap-highlight-color: transparent; }
+      html, body, #root { height: 100%; }
+      body { margin: 0; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+      button, input, select { -webkit-appearance: none; appearance: none; }
+    </style>
+
+    <!-- React, ReactDOM, and the in-browser JSX compiler — loaded from CDN, no build step needed -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.6/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+/* ---------------------------------------------------------------------- */
+/*  Minimal hand-rolled icon set (no external icon library needed)        */
+/* ---------------------------------------------------------------------- */
+
+function makeIcon(paths, extra) {
+  return function IconCmp({ size = 24, strokeWidth = 2, color, style }) {
+    return (
+      <svg
+        width={size} height={size} viewBox="0 0 24 24" fill="none"
+        stroke={color || "currentColor"} strokeWidth={strokeWidth}
+        strokeLinecap="round" strokeLinejoin="round" style={style}
+      >
+        {paths.map((d, i) => <path key={i} d={d} />)}
+        {extra}
+      </svg>
+    );
+  };
+}
+
+const Plus = makeIcon(["M12 5v14M5 12h14"]);
+const X = makeIcon(["M18 6 6 18M6 6l12 12"]);
+const Check = makeIcon(["M20 6 9 17l-5-5"]);
+const ChevronRight = makeIcon(["M9 6l6 6-6 6"]);
+const ArrowLeft = makeIcon(["M19 12H5M12 19l-7-7 7-7"]);
+const ArrowUpRight = makeIcon(["M7 17 17 7M7 7h10v10"]);
+const ArrowDownRight = makeIcon(["M7 7 17 17M17 7v10H7"]);
+const ArrowLeftRight = makeIcon(["m17 3 4 4-4 4", "M3 7h18", "m7 21-4-4 4-4", "M21 17H3"]);
+const Pencil = makeIcon(["M12 20h9", "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"]);
+const Trash2 = makeIcon(["M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"]);
+const Home = makeIcon(["m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z", "M9 22V12h6v10"]);
+const ListPlus = makeIcon(["M3 6h13M3 12h9M3 18h9M18 9v6M15 12h6"]);
+const Filter = makeIcon(["M4 4h16l-6 8v6l-4 2v-8Z"]);
+const Download = makeIcon(["M12 4v12", "m7 12 5 5 5-5", "M5 20h14"]);
+const Store = makeIcon(["M3 9l1-5h16l1 5", "M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9", "M9 20v-6h6v6"]);
+const Landmark = makeIcon(["M2 10l10-6 10 6", "M4 10v11", "M20 10v11", "M2 21h20"]);
+const Smartphone = makeIcon(["M11 18h2"], <rect x="7" y="2" width="10" height="20" rx="2" />);
+const Wallet = makeIcon(["M2 10h20"], <rect x="2" y="6" width="20" height="14" rx="2" />);
+const WalletCards = Wallet;
+const BarChart3 = makeIcon([], <g><rect x="4" y="12" width="4" height="8" /><rect x="10" y="6" width="4" height="14" /><rect x="16" y="9" width="4" height="11" /></g>);
+const Search = makeIcon(["m21 21-4.35-4.35"], <circle cx="11" cy="11" r="7" />);
+const HistoryIcon = makeIcon(["M12 7v5l3.5 2"], <circle cx="12" cy="12" r="9" />);
+const Copy = makeIcon([], <g><rect x="9" y="9" width="12" height="12" rx="2" /><rect x="3" y="3" width="12" height="12" rx="2" /></g>);
+const PiggyBank = makeIcon(["M6 12l-2-2 3-1", "M9 20v2M16 20v2"], <g><ellipse cx="12" cy="14" rx="8" ry="6" /><circle cx="17" cy="13" r="0.8" fill="currentColor" stroke="none" /></g>);
+const LayoutGrid = makeIcon([], <g><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></g>);
+const Tag = makeIcon(["M20.6 12.4 12.7 4.5a2 2 0 0 0-1.4-.5H5a1 1 0 0 0-1 1v6.3a2 2 0 0 0 .6 1.4l7.9 7.9a2 2 0 0 0 2.8 0l5.3-5.3a2 2 0 0 0 0-2.8Z"], <circle cx="8.3" cy="8.3" r="1.3" fill="currentColor" stroke="none" />);
+const Info = makeIcon(["M12 16v-4", "M12 8h.01"], <circle cx="12" cy="12" r="9" />);
+
+/* ---------------------------------------------------------------------- */
+/*  Constants & helpers                                                   */
+/* ---------------------------------------------------------------------- */
+
+const STORAGE_KEY = "household-finance-v1";
+const INSTALL_DISMISS_KEY = "household-finance-install-dismissed";
+
+const WALLET_ICONS = {
+  cash: Wallet,
+  piggy: PiggyBank,
+  bank: Landmark,
+  ewallet: Smartphone,
+};
+
+const WALLET_COLORS = ["#3D6B4B", "#4A6FA5", "#C79A3B", "#A23E2E", "#6B4A8A", "#2F6F6B"];
+
+const CATEGORY_PALETTE = [
+  "#3D6B4B", "#A23E2E", "#C79A3B", "#4A6FA5", "#6B4A8A",
+  "#2F6F6B", "#8A5A3D", "#5A7A3D", "#7A3D5A", "#3D5A7A",
+];
+
+const DEFAULT_WALLETS = [
+  { id: "w1", name: "Dompet", icon: "cash", initialBalance: 0, color: WALLET_COLORS[0] },
+  { id: "w2", name: "Celengan", icon: "piggy", initialBalance: 0, color: WALLET_COLORS[1] },
+  { id: "w3", name: "BCA", icon: "bank", initialBalance: 0, color: WALLET_COLORS[2] },
+  { id: "w4", name: "Gopay", icon: "ewallet", initialBalance: 0, color: WALLET_COLORS[3] },
+  { id: "w5", name: "ShopeePay", icon: "ewallet", initialBalance: 0, color: WALLET_COLORS[4] },
+];
+
+const DEFAULT_INCOME_CATEGORIES = ["Gaji", "Kiriman Kakak", "Kiriman Orang Tua", "Bonus", "Lainnya"];
+const DEFAULT_EXPENSE_CATEGORIES = [
+  "Makanan", "Transportasi", "Tagihan & Utilitas", "Belanja",
+  "Kesehatan", "Hiburan", "Pendidikan", "Lainnya",
+];
+
+const MONTHS_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+const DAYS_ID = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function parseDateLocal(str) {
+  const [y, m, d] = str.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function toDateStr(dateObj) {
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+}
+function formatDateID(str, withWeekday = false) {
+  const d = parseDateLocal(str);
+  const base = `${d.getDate()} ${MONTHS_ID[d.getMonth()]} ${d.getFullYear()}`;
+  return withWeekday ? `${DAYS_ID[d.getDay()]}, ${base}` : base;
+}
+function formatRupiah(n) {
+  const sign = n < 0 ? "-" : "";
+  return `${sign}Rp${Math.abs(Math.round(n)).toLocaleString("id-ID")}`;
+}
+function startOfWeek(dateStr) {
+  const d = parseDateLocal(dateStr);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday as start
+  d.setDate(d.getDate() + diff);
+  return toDateStr(d);
+}
+function addDays(dateStr, n) {
+  const d = parseDateLocal(dateStr);
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
+}
+function uid() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+function colorForCategory(cat, list) {
+  const idx = list.indexOf(cat);
+  return CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length];
+}
+function colorForStore(storeId, storesList) {
+  const idx = storesList.findIndex((s) => s.id === storeId);
+  return WALLET_COLORS[(idx >= 0 ? idx : 0) % WALLET_COLORS.length];
+}
+function nextDuplicateName(baseName, existingNames) {
+  const m = baseName.match(/^(.*) \((\d+)\)$/);
+  const base = m ? m[1] : baseName;
+  let n = 2;
+  while (existingNames.includes(`${base} (${n})`)) n++;
+  return `${base} (${n})`;
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Small UI primitives                                                   */
+/* ---------------------------------------------------------------------- */
+
+function IconBadge({ icon: Icon, color, size = 38 }) {
+  return (
+    <div
+      className="icon-badge"
+      style={{ width: size, height: size, background: `${color}1f`, color }}
+    >
+      <Icon size={size * 0.5} strokeWidth={2} />
+    </div>
+  );
+}
+
+function Segmented({ value, onChange, options }) {
+  return (
+    <div className="segmented">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          className={`segmented-btn ${value === opt.value ? "active" : ""}`}
+          style={value === opt.value ? { background: opt.color, color: "#fff" } : {}}
+          onClick={() => onChange(opt.value)}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Install banner (Add to Home Screen)                                    */
+/* ---------------------------------------------------------------------- */
+
+function InstallBanner() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(INSTALL_DISMISS_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true);
+
+  useEffect(() => {
+    function onPrompt(e) {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    }
+    function onInstalled() {
+      setInstalled(true);
+      setDeferredPrompt(null);
+    }
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  function dismiss() {
+    setDismissed(true);
+    try {
+      localStorage.setItem(INSTALL_DISMISS_KEY, "1");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  async function install() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+  }
+
+  if (installed || isStandalone || dismissed) return null;
+  if (!deferredPrompt && !isIOS) return null;
+
+  return (
+    <div className="install-banner">
+      <Download size={16} className="install-banner-icon" />
+      <div className="install-banner-text">
+        {!deferredPrompt && isIOS ? (
+          <>Instal Buku Kas di layar utama: ketuk tombol <b>Bagikan</b>, lalu <b>Tambah ke Layar Utama</b>.</>
+        ) : (
+          <>Instal Buku Kas agar bisa dibuka langsung dari layar utama HP-mu.</>
+        )}
+      </div>
+      <div className="install-banner-actions">
+        {deferredPrompt && (
+          <button className="btn-primary small" onClick={install}>Instal</button>
+        )}
+        <button className="icon-btn" onClick={dismiss} aria-label="Tutup"><X size={15} /></button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Main App                                                               */
+/* ---------------------------------------------------------------------- */
+
+function App() {
+  const [loaded, setLoaded] = useState(false);
+  const [page, setPage] = useState("dashboard");
+
+  const [wallets, setWallets] = useState(DEFAULT_WALLETS);
+  const [incomeCategories, setIncomeCategories] = useState(DEFAULT_INCOME_CATEGORIES);
+  const [expenseCategories, setExpenseCategories] = useState(DEFAULT_EXPENSE_CATEGORIES);
+  const [transactions, setTransactions] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [storeItems, setStoreItems] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [saveError, setSaveError] = useState(false);
+
+  /* ---------------- load once (from localStorage) ---------------- */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.wallets) setWallets(data.wallets);
+        if (data.incomeCategories) setIncomeCategories(data.incomeCategories);
+        if (data.expenseCategories) setExpenseCategories(data.expenseCategories);
+        if (data.transactions) setTransactions(data.transactions);
+        if (data.stores) setStores(data.stores);
+        if (data.storeItems) setStoreItems(data.storeItems);
+        if (data.budgets) setBudgets(data.budgets);
+      }
+    } catch (e) {
+      // no saved data yet, or it was unreadable — start fresh
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
+
+  /* ---------------- persist on change ---------------- */
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      const payload = JSON.stringify({ wallets, incomeCategories, expenseCategories, transactions, stores, storeItems, budgets });
+      localStorage.setItem(STORAGE_KEY, payload);
+      setSaveError(false);
+    } catch (e) {
+      setSaveError(true);
+    }
+  }, [wallets, incomeCategories, expenseCategories, transactions, stores, storeItems, budgets, loaded]);
+
+  /* ---------------- derived data ---------------- */
+  const walletBalances = useMemo(() => {
+    const map = {};
+    wallets.forEach((w) => (map[w.id] = w.initialBalance || 0));
+    transactions.forEach((t) => {
+      if (t.type === "transfer") {
+        if (t.fromWalletId in map) map[t.fromWalletId] -= t.amount;
+        if (t.toWalletId in map) map[t.toWalletId] += t.amount;
+        return;
+      }
+      if (!(t.walletId in map)) return;
+      map[t.walletId] += t.type === "income" ? t.amount : -t.amount;
+    });
+    return map;
+  }, [wallets, transactions]);
+
+  const totalBalance = useMemo(
+    () => Object.values(walletBalances).reduce((a, b) => a + b, 0),
+    [walletBalances]
+  );
+
+  const sortedTransactions = useMemo(
+    () => [...transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt)),
+    [transactions]
+  );
+
+  /* ---------------- mutators ---------------- */
+  const addTransaction = useCallback((tx) => {
+    setTransactions((prev) => [...prev, { ...tx, id: uid(), createdAt: Date.now() }]);
+  }, []);
+  const updateTransaction = useCallback((id, patch) => {
+    setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+  const deleteTransaction = useCallback((id) => {
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+  const addTransfer = useCallback(({ fromWalletId, toWalletId, amount, date, note }) => {
+    setTransactions((prev) => [
+      ...prev,
+      { id: uid(), type: "transfer", fromWalletId, toWalletId, amount, date, note: note || "", createdAt: Date.now() },
+    ]);
+  }, []);
+
+  const addWallet = useCallback((w) => {
+    setWallets((prev) => [...prev, { ...w, id: uid() }]);
+  }, []);
+  const updateWallet = useCallback((id, patch) => {
+    setWallets((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+  }, []);
+  const deleteWallet = useCallback((id) => {
+    setWallets((prev) => prev.filter((w) => w.id !== id));
+    setTransactions((prev) => prev.filter((t) => t.walletId !== id));
+  }, []);
+
+  const addCategory = useCallback((type, name) => {
+    if (type === "income") setIncomeCategories((prev) => (prev.includes(name) ? prev : [...prev.slice(0, -1), name, "Lainnya"]));
+    else setExpenseCategories((prev) => (prev.includes(name) ? prev : [...prev.slice(0, -1), name, "Lainnya"]));
+  }, []);
+
+  const renameCategory = useCallback((type, oldName, newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName) return;
+    if (type === "income") {
+      setIncomeCategories((prev) => prev.map((c) => (c === oldName ? trimmed : c)));
+    } else {
+      setExpenseCategories((prev) => prev.map((c) => (c === oldName ? trimmed : c)));
+      setBudgets((prev) => prev.map((b) => (b.category === oldName ? { ...b, category: trimmed } : b)));
+    }
+    setTransactions((prev) => prev.map((t) => (t.type === type && t.category === oldName ? { ...t, category: trimmed } : t)));
+  }, []);
+
+  const deleteCategory = useCallback((type, name) => {
+    if (name === "Lainnya") return;
+    if (type === "income") {
+      setIncomeCategories((prev) => prev.filter((c) => c !== name));
+    } else {
+      setExpenseCategories((prev) => prev.filter((c) => c !== name));
+      setBudgets((prev) => prev.filter((b) => b.category !== name));
+    }
+    setTransactions((prev) => prev.map((t) => (t.type === type && t.category === name ? { ...t, category: "Lainnya" } : t)));
+  }, []);
+
+  const setBudget = useCallback((category, limit) => {
+    setBudgets((prev) => {
+      const idx = prev.findIndex((b) => b.category === category);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], limit };
+        return next;
+      }
+      return [...prev, { id: uid(), category, limit }];
+    });
+  }, []);
+  const deleteBudget = useCallback((category) => {
+    setBudgets((prev) => prev.filter((b) => b.category !== category));
+  }, []);
+
+  const resetAll = useCallback(() => {
+    setWallets(DEFAULT_WALLETS);
+    setIncomeCategories(DEFAULT_INCOME_CATEGORIES);
+    setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
+    setTransactions([]);
+    setStores([]);
+    setStoreItems([]);
+    setBudgets([]);
+  }, []);
+
+  /* ---------------- store & price mutators ---------------- */
+  const addStore = useCallback((name) => {
+    setStores((prev) => [...prev, { id: uid(), name: name.trim() }]);
+  }, []);
+  const renameStore = useCallback((id, name) => {
+    setStores((prev) => prev.map((s) => (s.id === id ? { ...s, name: name.trim() } : s)));
+  }, []);
+  const deleteStore = useCallback((id) => {
+    setStores((prev) => prev.filter((s) => s.id !== id));
+    setStoreItems((prev) => prev.filter((it) => it.storeId !== id));
+  }, []);
+  const duplicateStore = useCallback((id) => {
+    const src = stores.find((s) => s.id === id);
+    if (!src) return;
+    const newName = nextDuplicateName(src.name, stores.map((s) => s.name));
+    const newId = uid();
+    const cloned = storeItems.filter((it) => it.storeId === id).map((it) => ({ ...it, id: uid(), storeId: newId }));
+    setStores((prev) => [...prev, { id: newId, name: newName }]);
+    setStoreItems((prev) => [...prev, ...cloned]);
+  }, [stores, storeItems]);
+
+  const addStoreItem = useCallback((storeId, name, price) => {
+    setStoreItems((prev) => [...prev, { id: uid(), storeId, name: name.trim(), price, updatedAt: todayStr() }]);
+  }, []);
+  const updateStoreItem = useCallback((id, patch) => {
+    setStoreItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch, updatedAt: todayStr() } : it)));
+  }, []);
+  const deleteStoreItem = useCallback((id) => {
+    setStoreItems((prev) => prev.filter((it) => it.id !== id));
+  }, []);
+  const duplicateItemsToStore = useCallback((itemIds, targetStoreId) => {
+    setStoreItems((prev) => {
+      const selected = prev.filter((it) => itemIds.includes(it.id));
+      let next = [...prev];
+      selected.forEach((src) => {
+        const idx = next.findIndex(
+          (it) => it.storeId === targetStoreId && it.name.trim().toLowerCase() === src.name.trim().toLowerCase()
+        );
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], price: src.price, updatedAt: todayStr() };
+        } else {
+          next.push({ id: uid(), storeId: targetStoreId, name: src.name, price: src.price, updatedAt: todayStr() });
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  const nav = [
+    { id: "dashboard", label: "Ringkasan", icon: Home },
+    { id: "add", label: "Catat", icon: ListPlus },
+    { id: "prices", label: "Harga", icon: Store },
+    { id: "history", label: "Riwayat", icon: HistoryIcon },
+    { id: "reports", label: "Laporan", icon: BarChart3 },
+    { id: "manage", label: "Kelola", icon: LayoutGrid },
+  ];
+
+  return (
+    <div className="app-root">
+      <FontStyles />
+      <InstallBanner />
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="brand">
+            <div className="brand-mark">I</div>
+            <div className="brand-text">
+              <div className="brand-title">IRiT</div>
+              <div className="brand-sub">Ingat Riwayat Transaksi</div>
+            </div>
+          </div>
+          <nav className="side-nav">
+            {nav.map((n) => (
+              <button
+                key={n.id}
+                className={`side-nav-btn ${page === n.id ? "active" : ""}`}
+                onClick={() => setPage(n.id)}
+              >
+                <n.icon size={18} strokeWidth={2} />
+                <span>{n.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-footer">
+            <div className="total-label">Total Saldo</div>
+            <div className="total-value">{formatRupiah(totalBalance)}</div>
+          </div>
+        </aside>
+
+        <main className="main-area">
+          {page === "dashboard" && (
+            <Dashboard
+              wallets={wallets}
+              walletBalances={walletBalances}
+              totalBalance={totalBalance}
+              transactions={sortedTransactions}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              goTo={setPage}
+            />
+          )}
+          {page === "add" && (
+            <AddTransaction
+              wallets={wallets}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              addCategory={addCategory}
+              budgets={budgets}
+              transactions={transactions}
+              totalBalance={totalBalance}
+              onSave={(tx) => {
+                addTransaction(tx);
+                setPage("dashboard");
+              }}
+            />
+          )}
+          {page === "history" && (
+            <HistoryPage
+              transactions={sortedTransactions}
+              wallets={wallets}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              onDelete={deleteTransaction}
+              onUpdate={updateTransaction}
+              addCategory={addCategory}
+            />
+          )}
+          {page === "prices" && (
+            <PricesPage
+              stores={stores}
+              storeItems={storeItems}
+              onAddStore={addStore}
+              onRenameStore={renameStore}
+              onDeleteStore={deleteStore}
+              onDuplicateStore={duplicateStore}
+              onAddItem={addStoreItem}
+              onUpdateItem={updateStoreItem}
+              onDeleteItem={deleteStoreItem}
+              onDuplicateItems={duplicateItemsToStore}
+              totalBalance={totalBalance}
+            />
+          )}
+          {page === "reports" && (
+            <ReportsPage
+              transactions={transactions}
+              wallets={wallets}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              budgets={budgets}
+            />
+          )}
+          {page === "manage" && (
+            <ManagePage
+              wallets={wallets}
+              walletBalances={walletBalances}
+              onAddWallet={addWallet}
+              onUpdateWallet={updateWallet}
+              onDeleteWallet={deleteWallet}
+              onTransfer={addTransfer}
+              onResetAll={resetAll}
+              budgets={budgets}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              transactions={transactions}
+              onAddCategory={addCategory}
+              onRenameCategory={renameCategory}
+              onDeleteCategory={deleteCategory}
+              onSetBudget={setBudget}
+              onDeleteBudget={deleteBudget}
+            />
+          )}
+        </main>
+      </div>
+
+      <nav className="mobile-nav">
+        {nav.map((n) => (
+          <button
+            key={n.id}
+            className={`mobile-nav-btn ${page === n.id ? "active" : ""}`}
+            onClick={() => setPage(n.id)}
+          >
+            <n.icon size={20} strokeWidth={2} />
+            <span>{n.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {saveError && (
+        <div className="save-toast">Gagal menyimpan data di perangkat ini.</div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Dashboard                                                              */
+/* ---------------------------------------------------------------------- */
+
+function Dashboard({ wallets, walletBalances, totalBalance, transactions, incomeCategories, expenseCategories, goTo }) {
+  const now = new Date();
+  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const thisMonth = transactions.filter((t) => t.date.startsWith(monthStr));
+  const incomeMonth = thisMonth.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0);
+  const expenseMonth = thisMonth.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0);
+
+  const byCategory = {};
+  thisMonth.filter((t) => t.type === "expense").forEach((t) => {
+    byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;
+  });
+  const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>
+            IRiT <span className="brand-suffix">- Ingat Riwayat Transaksi</span>
+          </h1>
+          <p className="tagline">Bantu Ibu Rumah Tangga untuk IRIT</p>
+        </div>
+      </header>
+
+      <section className="hero-card">
+        <div className="hero-label">Total Saldo Semua Dompet</div>
+        <div className="hero-value">{formatRupiah(totalBalance)}</div>
+        <div className="hero-stats">
+          <div className="hero-stat">
+            <ArrowUpRight size={16} color="#3D6B4B" />
+            <span>Pemasukan bulan ini</span>
+            <b style={{ color: "#3D6B4B" }}>{formatRupiah(incomeMonth)}</b>
+          </div>
+          <div className="hero-stat">
+            <ArrowDownRight size={16} color="#A23E2E" />
+            <span>Pengeluaran bulan ini</span>
+            <b style={{ color: "#A23E2E" }}>{formatRupiah(expenseMonth)}</b>
+          </div>
+        </div>
+        {topCategory && (
+          <div className="hero-top-cat">
+            Kategori pengeluaran terbesar bulan ini: <b>{topCategory[0]}</b> ({formatRupiah(topCategory[1])})
+          </div>
+        )}
+      </section>
+
+      <section className="section-block">
+        <div className="section-head">
+          <h2>Dompet</h2>
+          <button className="link-btn" onClick={() => goTo("manage")}>
+            Kelola <ChevronRight size={14} />
+          </button>
+        </div>
+        <div className="wallet-strip">
+          {wallets.map((w) => {
+            const Icon = WALLET_ICONS[w.icon] || Wallet;
+            return (
+              <div className="wallet-chip" key={w.id}>
+                <IconBadge icon={Icon} color={w.color} size={34} />
+                <div>
+                  <div className="wallet-chip-name">{w.name}</div>
+                  <div className="wallet-chip-balance">{formatRupiah(walletBalances[w.id] || 0)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="section-block">
+        <div className="section-head">
+          <h2>Transaksi Terbaru</h2>
+          <button className="link-btn" onClick={() => goTo("history")}>
+            Lihat semua <ChevronRight size={14} />
+          </button>
+        </div>
+        <TransactionList
+          transactions={transactions.slice(0, 6)}
+          wallets={wallets}
+          incomeCategories={incomeCategories}
+          expenseCategories={expenseCategories}
+          compact
+        />
+        {transactions.length === 0 && (
+          <div className="empty-state">
+            Belum ada transaksi. Mulai catat pemasukan atau pengeluaran pertamamu.
+            <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => goTo("add")}>
+              <Plus size={16} /> Catat Transaksi
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Transaction list (shared)                                             */
+/* ---------------------------------------------------------------------- */
+
+function TransactionList({ transactions, wallets, onDelete, onEdit, compact }) {
+  if (transactions.length === 0) return null;
+  const walletMap = Object.fromEntries(wallets.map((w) => [w.id, w]));
+
+  let lastDate = null;
+  return (
+    <div className="tx-list">
+      {transactions.map((t) => {
+        const showDate = t.date !== lastDate;
+        lastDate = t.date;
+
+        if (t.type === "transfer") {
+          const fromW = walletMap[t.fromWalletId];
+          const toW = walletMap[t.toWalletId];
+          return (
+            <React.Fragment key={t.id}>
+              {showDate && !compact && <div className="tx-date-divider">{formatDateID(t.date, true)}</div>}
+              <div className="tx-row">
+                <IconBadge icon={ArrowLeftRight} color="#4A6FA5" size={36} />
+                <div className="tx-main">
+                  <div className="tx-cat">Pindah Dompet</div>
+                  <div className="tx-meta">
+                    {fromW ? fromW.name : "Dompet dihapus"} → {toW ? toW.name : "Dompet dihapus"}
+                    {t.note ? ` · ${t.note}` : ""}
+                    {compact ? ` · ${formatDateID(t.date)}` : ""}
+                  </div>
+                </div>
+                <div className="tx-amount transfer">{formatRupiah(t.amount)}</div>
+                {onDelete && !compact && (
+                  <div className="tx-actions">
+                    <button className="icon-btn danger" onClick={() => onDelete(t.id)} title="Hapus">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </React.Fragment>
+          );
+        }
+
+        const wallet = walletMap[t.walletId];
+        const WIcon = wallet ? WALLET_ICONS[wallet.icon] || Wallet : Wallet;
+        return (
+          <React.Fragment key={t.id}>
+            {showDate && !compact && <div className="tx-date-divider">{formatDateID(t.date, true)}</div>}
+            <div className="tx-row">
+              <IconBadge
+                icon={WIcon}
+                color={t.type === "income" ? "#3D6B4B" : "#A23E2E"}
+                size={36}
+              />
+              <div className="tx-main">
+                <div className="tx-cat">{t.category}</div>
+                <div className="tx-meta">
+                  {wallet ? wallet.name : "Dompet dihapus"}
+                  {t.note ? ` · ${t.note}` : ""}
+                  {compact ? ` · ${formatDateID(t.date)}` : ""}
+                </div>
+              </div>
+              <div className={`tx-amount ${t.type}`}>
+                {t.type === "income" ? "+" : "-"}{formatRupiah(t.amount)}
+              </div>
+              {(onDelete || onEdit) && !compact && (
+                <div className="tx-actions">
+                  {onEdit && (
+                    <button className="icon-btn" onClick={() => onEdit(t)} title="Ubah">
+                      <Pencil size={15} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button className="icon-btn danger" onClick={() => onDelete(t.id)} title="Hapus">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Add / Edit Transaction                                                 */
+/* ---------------------------------------------------------------------- */
+
+function AddTransaction({ wallets, incomeCategories, expenseCategories, addCategory, onSave, initial, onCancel, budgets, transactions, totalBalance }) {
+  const [type, setType] = useState(initial?.type || "expense");
+  const [amountStr, setAmountStr] = useState(initial ? String(initial.amount) : "");
+  const [category, setCategory] = useState(initial?.category || "");
+  const [walletId, setWalletId] = useState(initial?.walletId || wallets[0]?.id || "");
+  const [date, setDate] = useState(initial?.date || todayStr());
+  const [note, setNote] = useState(initial?.note || "");
+  const [newCat, setNewCat] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
+  const [error, setError] = useState("");
+
+  const categories = type === "income" ? incomeCategories : expenseCategories;
+
+  useEffect(() => {
+    if (!category && categories.length) setCategory(categories.includes("Lainnya") ? "Lainnya" : categories[0]);
+  }, [type]); // eslint-disable-line
+
+  const budgetStatus = useMemo(() => {
+    if (type !== "expense" || !category || !budgets || !transactions) return null;
+    const budget = budgets.find((b) => b.category === category);
+    if (!budget || !budget.limit) return null;
+    const monthStr = todayStr().slice(0, 7);
+    const spentSoFar = transactions
+      .filter((t) => t.type === "expense" && t.category === category && t.date.startsWith(monthStr) && (!initial || t.id !== initial.id))
+      .reduce((a, t) => a + t.amount, 0);
+    const projected = spentSoFar + (Number(amountStr) || 0);
+    const pct = (projected / budget.limit) * 100;
+    return { spent: spentSoFar, projected, limit: budget.limit, pct };
+  }, [type, category, budgets, transactions, amountStr, initial]);
+
+  const displayAmount = amountStr ? Number(amountStr).toLocaleString("id-ID") : "";
+
+  function handleAmountChange(e) {
+    const raw = e.target.value.replace(/[^\d]/g, "");
+    setAmountStr(raw);
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!amountStr || Number(amountStr) <= 0) return setError("Masukkan jumlah yang valid.");
+    if (!category) return setError("Pilih kategori.");
+    if (!walletId) return setError("Pilih dompet.");
+    setError("");
+    onSave({
+      type,
+      amount: Number(amountStr),
+      category,
+      walletId,
+      date,
+      note: note.trim(),
+      ...(initial ? { id: initial.id } : {}),
+    });
+  }
+
+  function commitNewCategory() {
+    const name = newCat.trim();
+    if (!name) return setAddingCat(false);
+    addCategory(type, name);
+    setCategory(name);
+    setNewCat("");
+    setAddingCat(false);
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>{initial ? "Ubah Transaksi" : "Catat Transaksi"}</h1>
+          <p className="muted">Simpan pemasukan atau pengeluaran rumah tangga.</p>
+        </div>
+        {totalBalance !== undefined && <TotalBalanceBadge total={totalBalance} />}
+      </header>
+
+      <form className="card form-card" onSubmit={handleSubmit}>
+        <Segmented
+          value={type}
+          onChange={(v) => { setType(v); setCategory(""); }}
+          options={[
+            { value: "expense", label: "Pengeluaran", color: "#A23E2E" },
+            { value: "income", label: "Pemasukan", color: "#3D6B4B" },
+          ]}
+        />
+
+        <div className="field">
+          <label>Jumlah</label>
+          <div className="amount-input">
+            <span>Rp</span>
+            <input
+              inputMode="numeric"
+              placeholder="0"
+              value={displayAmount}
+              onChange={handleAmountChange}
+            />
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Kategori</label>
+          {!addingCat ? (
+            <div className="chip-select">
+              {categories.map((c) => (
+                <button
+                  type="button"
+                  key={c}
+                  className={`chip ${category === c ? "active" : ""}`}
+                  style={category === c ? { borderColor: colorForCategory(c, categories), background: `${colorForCategory(c, categories)}1f`, color: colorForCategory(c, categories) } : {}}
+                  onClick={() => setCategory(c)}
+                >
+                  {c}
+                </button>
+              ))}
+              <button type="button" className="chip chip-add" onClick={() => setAddingCat(true)}>
+                <Plus size={13} /> Baru
+              </button>
+            </div>
+          ) : (
+            <div className="inline-add">
+              <input
+                autoFocus
+                placeholder="Nama kategori baru"
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), commitNewCategory())}
+              />
+              <button type="button" className="icon-btn" onClick={commitNewCategory}><Check size={16} /></button>
+              <button type="button" className="icon-btn" onClick={() => { setAddingCat(false); setNewCat(""); }}><X size={16} /></button>
+            </div>
+          )}
+        </div>
+
+        {budgetStatus && budgetStatus.pct >= 80 && (
+          <div className={`budget-warning ${budgetStatus.pct >= 100 ? "over" : ""}`}>
+            ⚠️ Budget "{category}" bulan ini {budgetStatus.pct >= 100 ? "sudah lewat" : "sudah terpakai"}{" "}
+            {Math.round(budgetStatus.pct)}% ({formatRupiah(budgetStatus.projected)} dari {formatRupiah(budgetStatus.limit)}).
+          </div>
+        )}
+
+        <div className="field">
+          <label>Dompet</label>
+          <div className="chip-select">
+            {wallets.map((w) => {
+              const Icon = WALLET_ICONS[w.icon] || Wallet;
+              return (
+                <button
+                  type="button"
+                  key={w.id}
+                  className={`chip wallet-chip-select ${walletId === w.id ? "active" : ""}`}
+                  style={walletId === w.id ? { borderColor: w.color, background: `${w.color}1f`, color: w.color } : {}}
+                  onClick={() => setWalletId(w.id)}
+                >
+                  <Icon size={14} /> {w.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="field-row">
+          <div className="field">
+            <label>Tanggal</label>
+            <input
+              type="date"
+              value={date}
+              max={todayStr()}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Catatan (opsional)</label>
+          <input
+            placeholder="Misal: beli beras 5kg"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+
+        {error && <div className="form-error">{error}</div>}
+
+        <div className="form-actions">
+          {onCancel && (
+            <button type="button" className="btn-secondary" onClick={onCancel}>Batal</button>
+          )}
+          <button type="submit" className="btn-primary" style={{ background: type === "income" ? "#3D6B4B" : "#A23E2E" }}>
+            {initial ? "Simpan Perubahan" : "Simpan"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  History page                                                           */
+/* ---------------------------------------------------------------------- */
+
+function HistoryPage({ transactions, wallets, incomeCategories, expenseCategories, onDelete, onUpdate, addCategory }) {
+  const [filterType, setFilterType] = useState("all");
+  const [filterWallet, setFilterWallet] = useState("all");
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const filtered = transactions.filter((t) => {
+    if (filterType !== "all" && t.type !== filterType) return false;
+    if (filterWallet !== "all" && t.walletId !== filterWallet) return false;
+    if (search && !(`${t.category} ${t.note}`.toLowerCase().includes(search.toLowerCase()))) return false;
+    return true;
+  });
+
+  if (editing) {
+    return (
+      <AddTransaction
+        wallets={wallets}
+        incomeCategories={incomeCategories}
+        expenseCategories={expenseCategories}
+        addCategory={addCategory}
+        initial={editing}
+        onCancel={() => setEditing(null)}
+        onSave={(tx) => {
+          onUpdate(tx.id, tx);
+          setEditing(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Riwayat</h1>
+          <p className="muted">{transactions.length} transaksi tercatat</p>
+        </div>
+        <button className="icon-btn" onClick={() => setShowFilters((s) => !s)}>
+          <Filter size={17} />
+        </button>
+      </header>
+
+      <div className="search-bar">
+        <Search size={15} />
+        <input placeholder="Cari kategori atau catatan…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+
+      {showFilters && (
+        <div className="filter-row">
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="all">Semua Jenis</option>
+            <option value="income">Pemasukan</option>
+            <option value="expense">Pengeluaran</option>
+            <option value="transfer">Pindah Dompet</option>
+          </select>
+          <select value={filterWallet} onChange={(e) => setFilterWallet(e.target.value)}>
+            <option value="all">Semua Dompet</option>
+            {wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div className="card">
+        <TransactionList
+          transactions={filtered}
+          wallets={wallets}
+          onDelete={onDelete}
+          onEdit={setEditing}
+        />
+        {filtered.length === 0 && <div className="empty-state">Tidak ada transaksi yang cocok.</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Wallets page                                                           */
+/* ---------------------------------------------------------------------- */
+
+function WalletsPage({ wallets, walletBalances, onAdd, onUpdate, onDelete, onReset, onTransfer, onBack }) {
+  const [adding, setAdding] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          {onBack && (
+            <button className="icon-btn" onClick={onBack} style={{ marginTop: 2 }}><ArrowLeft size={16} /></button>
+          )}
+          <div>
+            <h1>Dompet</h1>
+            <p className="muted">Kelola tempat menyimpan uangmu</p>
+          </div>
+        </div>
+      </header>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn-primary" onClick={() => { setAdding(true); setTransferring(false); }}>
+          <Plus size={16} /> Dompet Baru
+        </button>
+        <button className="btn-secondary" onClick={() => { setTransferring(true); setAdding(false); }} disabled={wallets.length < 2}>
+          <ArrowLeftRight size={16} /> Pindahkan Uang
+        </button>
+      </div>
+
+      {adding && (
+        <WalletForm
+          onCancel={() => setAdding(false)}
+          onSave={(w) => { onAdd(w); setAdding(false); }}
+        />
+      )}
+
+      {transferring && (
+        <TransferForm
+          wallets={wallets}
+          onCancel={() => setTransferring(false)}
+          onSave={(payload) => { onTransfer(payload); setTransferring(false); }}
+        />
+      )}
+
+      <div className="wallet-grid">
+        {wallets.map((w) => {
+          const Icon = WALLET_ICONS[w.icon] || Wallet;
+          if (editingId === w.id) {
+            return (
+              <WalletForm
+                key={w.id}
+                initial={w}
+                onCancel={() => setEditingId(null)}
+                onSave={(patch) => { onUpdate(w.id, patch); setEditingId(null); }}
+              />
+            );
+          }
+          return (
+            <div className="wallet-card" key={w.id} style={{ borderTopColor: w.color }}>
+              <div className="wallet-card-top">
+                <IconBadge icon={Icon} color={w.color} size={40} />
+                <div className="wallet-card-actions">
+                  <button className="icon-btn" onClick={() => setEditingId(w.id)}><Pencil size={14} /></button>
+                  <button className="icon-btn danger" onClick={() => setConfirmDelete(w.id)}><Trash2 size={14} /></button>
+                </div>
+              </div>
+              <div className="wallet-card-name">{w.name}</div>
+              <div className="wallet-card-balance">{formatRupiah(walletBalances[w.id] || 0)}</div>
+
+              {confirmDelete === w.id && (
+                <div className="confirm-box">
+                  <span>Hapus dompet ini beserta seluruh transaksinya?</span>
+                  <div>
+                    <button className="btn-secondary small" onClick={() => setConfirmDelete(null)}>Batal</button>
+                    <button className="btn-danger small" onClick={() => { onDelete(w.id); setConfirmDelete(null); }}>Hapus</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="danger-zone">
+        {!confirmReset ? (
+          <button className="link-btn danger" onClick={() => setConfirmReset(true)}>Hapus semua data</button>
+        ) : (
+          <div className="confirm-box">
+            <span>Ini akan menghapus semua dompet, kategori, transaksi, toko, budget, dan daftar harga di perangkat ini. Lanjutkan?</span>
+            <div>
+              <button className="btn-secondary small" onClick={() => setConfirmReset(false)}>Batal</button>
+              <button className="btn-danger small" onClick={() => { onReset(); setConfirmReset(false); }}>Ya, Hapus Semua</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TransferForm({ wallets, onSave, onCancel }) {
+  const [fromId, setFromId] = useState(wallets[0]?.id || "");
+  const [toId, setToId] = useState(wallets[1]?.id || "");
+  const [amountStr, setAmountStr] = useState("");
+  const [date, setDate] = useState(todayStr());
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (toId === fromId) {
+      const alt = wallets.find((w) => w.id !== fromId);
+      setToId(alt ? alt.id : "");
+    }
+  }, [fromId]); // eslint-disable-line
+
+  function submit(e) {
+    e.preventDefault();
+    if (!fromId || !toId || fromId === toId) return setError("Pilih dua dompet yang berbeda.");
+    if (!amountStr || Number(amountStr) <= 0) return setError("Masukkan jumlah yang valid.");
+    setError("");
+    onSave({ fromWalletId: fromId, toWalletId: toId, amount: Number(amountStr), date, note: note.trim() });
+  }
+
+  return (
+    <form className="card form-card" onSubmit={submit}>
+      <div className="field">
+        <label>Dari Dompet</label>
+        <div className="chip-select">
+          {wallets.map((w) => (
+            <button
+              type="button"
+              key={w.id}
+              className={`chip ${fromId === w.id ? "active" : ""}`}
+              style={fromId === w.id ? { borderColor: w.color, background: `${w.color}1f`, color: w.color } : {}}
+              onClick={() => setFromId(w.id)}
+            >
+              {w.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>Ke Dompet</label>
+        <div className="chip-select">
+          {wallets.filter((w) => w.id !== fromId).map((w) => (
+            <button
+              type="button"
+              key={w.id}
+              className={`chip ${toId === w.id ? "active" : ""}`}
+              style={toId === w.id ? { borderColor: w.color, background: `${w.color}1f`, color: w.color } : {}}
+              onClick={() => setToId(w.id)}
+            >
+              {w.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>Jumlah</label>
+        <div className="amount-input">
+          <span>Rp</span>
+          <input
+            inputMode="numeric"
+            placeholder="0"
+            value={amountStr ? Number(amountStr).toLocaleString("id-ID") : ""}
+            onChange={(e) => setAmountStr(e.target.value.replace(/[^\d]/g, ""))}
+          />
+        </div>
+      </div>
+      <div className="field">
+        <label>Tanggal</label>
+        <input type="date" value={date} max={todayStr()} onChange={(e) => setDate(e.target.value)} />
+      </div>
+      <div className="field">
+        <label>Catatan (opsional)</label>
+        <input placeholder="Misal: setor tunai ke BCA" value={note} onChange={(e) => setNote(e.target.value)} />
+      </div>
+      {error && <div className="form-error">{error}</div>}
+      <div className="form-actions">
+        <button type="button" className="btn-secondary" onClick={onCancel}>Batal</button>
+        <button type="submit" className="btn-primary" style={{ background: "#4A6FA5" }}>
+          <ArrowLeftRight size={15} /> Pindahkan
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function WalletForm({ initial, onSave, onCancel }) {
+  const [name, setName] = useState(initial?.name || "");
+  const [icon, setIcon] = useState(initial?.icon || "cash");
+  const [color, setColor] = useState(initial?.color || WALLET_COLORS[0]);
+  const [initialBalance, setInitialBalance] = useState(initial ? String(initial.initialBalance) : "0");
+
+  function submit(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave({ name: name.trim(), icon, color, initialBalance: Number(initialBalance) || 0 });
+  }
+
+  return (
+    <form className="card form-card" onSubmit={submit} style={{ marginBottom: 16 }}>
+      <div className="field">
+        <label>Nama Dompet</label>
+        <input placeholder="Misal: Dana Darurat" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      </div>
+      <div className="field">
+        <label>Jenis</label>
+        <div className="chip-select">
+          {Object.entries(WALLET_ICONS).map(([key, Icon]) => (
+            <button type="button" key={key} className={`chip ${icon === key ? "active" : ""}`} onClick={() => setIcon(key)}>
+              <Icon size={14} /> {{ cash: "Tunai", piggy: "Tabungan", bank: "Bank", ewallet: "E-Wallet" }[key]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>Warna</label>
+        <div className="color-select">
+          {WALLET_COLORS.map((c) => (
+            <button type="button" key={c} className={`color-dot ${color === c ? "active" : ""}`} style={{ background: c }} onClick={() => setColor(c)} />
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>Saldo Awal</label>
+        <div className="amount-input">
+          <span>Rp</span>
+          <input inputMode="numeric" value={Number(initialBalance || 0).toLocaleString("id-ID")}
+            onChange={(e) => setInitialBalance(e.target.value.replace(/[^\d]/g, ""))} />
+        </div>
+      </div>
+      <div className="form-actions">
+        <button type="button" className="btn-secondary" onClick={onCancel}>Batal</button>
+        <button type="submit" className="btn-primary">Simpan</button>
+      </div>
+    </form>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Kelola (wallets, budget, about) hub                                    */
+/* ---------------------------------------------------------------------- */
+
+function ManagePage({
+  wallets, walletBalances, onAddWallet, onUpdateWallet, onDeleteWallet, onTransfer, onResetAll,
+  budgets, incomeCategories, expenseCategories, transactions, onAddCategory, onRenameCategory, onDeleteCategory, onSetBudget, onDeleteBudget,
+}) {
+  const [subPage, setSubPage] = useState(null); // null | "wallets" | "categories" | "about"
+
+  if (subPage === "wallets") {
+    return (
+      <WalletsPage
+        wallets={wallets}
+        walletBalances={walletBalances}
+        onAdd={onAddWallet}
+        onUpdate={onUpdateWallet}
+        onDelete={onDeleteWallet}
+        onReset={onResetAll}
+        onTransfer={onTransfer}
+        onBack={() => setSubPage(null)}
+      />
+    );
+  }
+  if (subPage === "categories") {
+    return (
+      <CategoriesPage
+        onBack={() => setSubPage(null)}
+        incomeCategories={incomeCategories}
+        expenseCategories={expenseCategories}
+        budgets={budgets}
+        transactions={transactions}
+        onAddCategory={onAddCategory}
+        onRenameCategory={onRenameCategory}
+        onDeleteCategory={onDeleteCategory}
+        onSetBudget={onSetBudget}
+        onDeleteBudget={onDeleteBudget}
+      />
+    );
+  }
+  if (subPage === "about") {
+    return <AboutPage onBack={() => setSubPage(null)} />;
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Kelola</h1>
+          <p className="muted">Pengaturan dompet, kategori, dan lainnya</p>
+        </div>
+      </header>
+
+      <div className="manage-menu">
+        <button className="manage-item" onClick={() => setSubPage("wallets")}>
+          <IconBadge icon={WalletCards} color="#3D6B4B" size={40} />
+          <div className="manage-item-text">
+            <div className="manage-item-title">Dompet</div>
+            <div className="manage-item-sub">Kelola dompet & pindahkan uang antar dompet</div>
+          </div>
+          <ChevronRight size={18} />
+        </button>
+        <button className="manage-item" onClick={() => setSubPage("categories")}>
+          <IconBadge icon={Tag} color="#C79A3B" size={40} />
+          <div className="manage-item-text">
+            <div className="manage-item-title">Kategori</div>
+            <div className="manage-item-sub">Kelola kategori & atur budget per kategori</div>
+          </div>
+          <ChevronRight size={18} />
+        </button>
+        <button className="manage-item" onClick={() => setSubPage("about")}>
+          <IconBadge icon={Info} color="#4A6FA5" size={40} />
+          <div className="manage-item-text">
+            <div className="manage-item-title">Tentang Aplikasi</div>
+            <div className="manage-item-sub">Info & kontak</div>
+          </div>
+          <ChevronRight size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CategoriesPage({
+  onBack, incomeCategories, expenseCategories, budgets, transactions,
+  onAddCategory, onRenameCategory, onDeleteCategory, onSetBudget, onDeleteBudget,
+}) {
+  const [type, setType] = useState("expense"); // expense | income
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [renamingCat, setRenamingCat] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [budgetEditCat, setBudgetEditCat] = useState(null);
+  const [budgetDraft, setBudgetDraft] = useState("");
+  const [error, setError] = useState("");
+
+  const categories = type === "income" ? incomeCategories : expenseCategories;
+  const monthStr = todayStr().slice(0, 7);
+
+  function submitAdd(e) {
+    e.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+    if (categories.includes(name)) return setError("Kategori sudah ada.");
+    onAddCategory(type, name);
+    setNewName("");
+    setAdding(false);
+    setError("");
+  }
+
+  function startRename(cat) {
+    setRenamingCat(cat);
+    setRenameDraft(cat);
+    setError("");
+  }
+  function submitRename(e) {
+    e.preventDefault();
+    const name = renameDraft.trim();
+    if (!name) return;
+    if (name !== renamingCat && categories.includes(name)) return setError("Kategori sudah ada.");
+    onRenameCategory(type, renamingCat, name);
+    setRenamingCat(null);
+    setError("");
+  }
+
+  function startBudgetEdit(cat, current) {
+    setBudgetEditCat(cat);
+    setBudgetDraft(current ? String(current) : "");
+  }
+  function saveBudget(cat) {
+    const val = Number(budgetDraft);
+    if (val > 0) onSetBudget(cat, val);
+    setBudgetEditCat(null);
+    setBudgetDraft("");
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <button className="icon-btn" onClick={onBack} style={{ marginTop: 2 }}><ArrowLeft size={16} /></button>
+          <div>
+            <h1>Kategori</h1>
+            <p className="muted">Kelola kategori & atur budget per kategori</p>
+          </div>
+        </div>
+      </header>
+
+      <Segmented
+        value={type}
+        onChange={(v) => { setType(v); setAdding(false); setRenamingCat(null); setError(""); }}
+        options={[
+          { value: "expense", label: "Pengeluaran", color: "#A23E2E" },
+          { value: "income", label: "Pemasukan", color: "#3D6B4B" },
+        ]}
+      />
+
+      {!adding ? (
+        <button className="btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => { setAdding(true); setError(""); }}>
+          <Plus size={16} /> Kategori Baru
+        </button>
+      ) : (
+        <form className="card form-card" onSubmit={submitAdd}>
+          <div className="field">
+            <label>Nama Kategori</label>
+            <input autoFocus placeholder="Misal: Langganan" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </div>
+          {error && <div className="form-error">{error}</div>}
+          <div className="form-actions">
+            <button type="button" className="btn-secondary" onClick={() => { setAdding(false); setNewName(""); setError(""); }}>Batal</button>
+            <button type="submit" className="btn-primary">Simpan</button>
+          </div>
+        </form>
+      )}
+
+      <div className="card">
+        <div className="category-list">
+          {categories.map((cat) => {
+            const budget = type === "expense" ? budgets.find((b) => b.category === cat) : null;
+            const spent =
+              type === "expense"
+                ? transactions
+                    .filter((t) => t.type === "expense" && t.category === cat && t.date.startsWith(monthStr))
+                    .reduce((a, t) => a + t.amount, 0)
+                : 0;
+            const pct = budget && budget.limit > 0 ? (spent / budget.limit) * 100 : 0;
+            const isLocked = cat === "Lainnya";
+
+            return (
+              <div className="category-row" key={cat}>
+                <div className="category-row-top">
+                  {renamingCat === cat ? (
+                    <form className="inline-add" onSubmit={submitRename} style={{ flex: 1 }}>
+                      <input autoFocus value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} />
+                      <button type="submit" className="icon-btn"><Check size={16} /></button>
+                      <button type="button" className="icon-btn" onClick={() => { setRenamingCat(null); setError(""); }}><X size={16} /></button>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="category-row-main">
+                        <span className="category-dot" style={{ background: colorForCategory(cat, categories) }} />
+                        <span className="category-name">{cat}</span>
+                      </div>
+                      <div className="category-row-actions">
+                        <button className="icon-btn" onClick={() => startRename(cat)}><Pencil size={14} /></button>
+                        {!isLocked && (
+                          <button className="icon-btn danger" onClick={() => onDeleteCategory(type, cat)}><Trash2 size={14} /></button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {renamingCat === cat && error && <div className="form-error" style={{ marginTop: 8 }}>{error}</div>}
+
+                {type === "expense" && renamingCat !== cat && (
+                  <div className="category-budget">
+                    {budget ? (
+                      <>
+                        <div className="budget-row-top">
+                          <span className={`budget-row-pct ${pct >= 100 ? "over" : pct >= 80 ? "warn" : ""}`}>
+                            {Math.round(pct)}% budget terpakai
+                          </span>
+                        </div>
+                        <div className="bar-track">
+                          <div
+                            className="bar-fill"
+                            style={{ width: `${Math.min(100, pct)}%`, background: pct >= 100 ? "#A23E2E" : pct >= 80 ? "#C79A3B" : "#3D6B4B" }}
+                          />
+                        </div>
+                        <div className="budget-row-sub">{formatRupiah(spent)} dari {formatRupiah(budget.limit)} bulan ini</div>
+                      </>
+                    ) : (
+                      <div className="muted" style={{ fontSize: 12 }}>Budget belum diatur</div>
+                    )}
+
+                    {budgetEditCat === cat ? (
+                      <div className="inline-add" style={{ marginTop: 8 }}>
+                        <div className="amount-input" style={{ flex: 1 }}>
+                          <span>Rp</span>
+                          <input
+                            autoFocus
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={budgetDraft ? Number(budgetDraft).toLocaleString("id-ID") : ""}
+                            onChange={(e) => setBudgetDraft(e.target.value.replace(/[^\d]/g, ""))}
+                          />
+                        </div>
+                        <button className="icon-btn" onClick={() => saveBudget(cat)}><Check size={16} /></button>
+                        <button className="icon-btn" onClick={() => { setBudgetEditCat(null); setBudgetDraft(""); }}><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="btn-secondary small" onClick={() => startBudgetEdit(cat, budget?.limit)}>
+                          {budget ? "Ubah Budget" : "Atur Budget"}
+                        </button>
+                        {budget && (
+                          <button className="btn-secondary small" onClick={() => onDeleteBudget(cat)}>Hapus Budget</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AboutPage({ onBack }) {
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <button className="icon-btn" onClick={onBack} style={{ marginTop: 2 }}><ArrowLeft size={16} /></button>
+          <div>
+            <h1>Tentang Aplikasi</h1>
+          </div>
+        </div>
+      </header>
+
+      <div className="card about-card">
+        <p>Aplikasi ini dibuat dengan bantuan AI.</p>
+        <p>Jika ada yang ingin diupgrade / ditanya, kontak ke:</p>
+        <ul className="about-list">
+          <li>IG: <a href="https://instagram.com/paman_ripal" target="_blank" rel="noopener noreferrer">@paman_ripal</a></li>
+          <li>Tiktok: <a href="https://tiktok.com/@pamanripal" target="_blank" rel="noopener noreferrer">@pamanripal</a></li>
+        </ul>
+        <p>Bantu follow juga ya. Thank you.</p>
+      </div>
+    </div>
+  );
+}
+
+function TotalBalanceBadge({ total }) {
+  return (
+    <div className="balance-badge">
+      <div className="balance-badge-label">Saldo Total</div>
+      <div className="balance-badge-value">{formatRupiah(total)}</div>
+    </div>
+  );
+}
+
+function BudgetStatusPanel({ budgets, transactions }) {
+  const monthStr = todayStr().slice(0, 7);
+  const rows = budgets
+    .map((b) => {
+      const spent = transactions
+        .filter((t) => t.type === "expense" && t.category === b.category && t.date.startsWith(monthStr))
+        .reduce((a, t) => a + t.amount, 0);
+      const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0;
+      return { ...b, spent, pct };
+    })
+    .sort((a, b) => b.pct - a.pct);
+
+  return (
+    <div className="card">
+      <h3>Status Budget Bulan Ini</h3>
+      <div className="budget-list">
+        {rows.map((r) => (
+          <div className="budget-row" key={r.id}>
+            <div className="budget-row-top">
+              <span className="budget-row-name">{r.category}</span>
+              <span className={`budget-row-pct ${r.pct >= 100 ? "over" : r.pct >= 80 ? "warn" : ""}`}>{Math.round(r.pct)}%</span>
+            </div>
+            <div className="bar-track">
+              <div
+                className="bar-fill"
+                style={{ width: `${Math.min(100, r.pct)}%`, background: r.pct >= 100 ? "#A23E2E" : r.pct >= 80 ? "#C79A3B" : "#3D6B4B" }}
+              />
+            </div>
+            <div className="budget-row-sub">{formatRupiah(r.spent)} dari {formatRupiah(r.limit)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Reports page                                                           */
+/* ---------------------------------------------------------------------- */
+
+function SimpleBarChart({ data }) {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  return (
+    <div className="simple-bar-chart">
+      {data.map((d) => (
+        <div className="bar-row" key={d.name}>
+          <div className="bar-label">{d.name}</div>
+          <div className="bar-track">
+            <div className="bar-fill" style={{ width: `${Math.max(4, (d.value / max) * 100)}%`, background: d.color }} />
+          </div>
+          <div className="bar-value">{formatRupiah(d.value)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportsPage({ transactions, wallets, incomeCategories, expenseCategories, budgets }) {
+  const [periodType, setPeriodType] = useState("monthly"); // daily | weekly | monthly | custom
+  const [anchorDate, setAnchorDate] = useState(todayStr());
+  const [monthValue, setMonthValue] = useState(todayStr().slice(0, 7));
+  const [customStart, setCustomStart] = useState(addDays(todayStr(), -6));
+  const [customEnd, setCustomEnd] = useState(todayStr());
+
+  const { start, end, label } = useMemo(() => {
+    if (periodType === "daily") {
+      return { start: anchorDate, end: anchorDate, label: formatDateID(anchorDate, true) };
+    }
+    if (periodType === "weekly") {
+      const s = startOfWeek(anchorDate);
+      const e = addDays(s, 6);
+      return { start: s, end: e, label: `${formatDateID(s)} – ${formatDateID(e)}` };
+    }
+    if (periodType === "monthly") {
+      const [y, m] = monthValue.split("-").map(Number);
+      const s = `${monthValue}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const e = `${monthValue}-${String(lastDay).padStart(2, "0")}`;
+      return { start: s, end: e, label: `${MONTHS_ID[m - 1]} ${y}` };
+    }
+    return { start: customStart, end: customEnd, label: `${formatDateID(customStart)} – ${formatDateID(customEnd)}` };
+  }, [periodType, anchorDate, monthValue, customStart, customEnd]);
+
+  const inRange = transactions.filter((t) => t.date >= start && t.date <= end);
+  const incomeTotal = inRange.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0);
+  const expenseTotal = inRange.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0);
+  const net = incomeTotal - expenseTotal;
+
+  const expenseByCategory = {};
+  inRange.filter((t) => t.type === "expense").forEach((t) => {
+    expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
+  });
+  const expenseRows = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1]);
+  const topExpense = expenseRows[0];
+
+  const incomeByCategory = {};
+  inRange.filter((t) => t.type === "income").forEach((t) => {
+    incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
+  });
+  const incomeRows = Object.entries(incomeByCategory).sort((a, b) => b[1] - a[1]);
+
+  const chartData = expenseRows.map(([cat, amt]) => ({ name: cat, value: amt, color: colorForCategory(cat, expenseCategories) }));
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Laporan</h1>
+          <p className="muted">Ringkasan keuangan berdasarkan periode</p>
+        </div>
+      </header>
+
+      {budgets && budgets.length > 0 && <BudgetStatusPanel budgets={budgets} transactions={transactions} />}
+
+      <div className="card">
+        <Segmented
+          value={periodType}
+          onChange={setPeriodType}
+          options={[
+            { value: "daily", label: "Harian", color: "#3D6B4B" },
+            { value: "weekly", label: "Mingguan", color: "#3D6B4B" },
+            { value: "monthly", label: "Bulanan", color: "#3D6B4B" },
+            { value: "custom", label: "Kustom", color: "#3D6B4B" },
+          ]}
+        />
+
+        <div className="period-controls">
+          {periodType === "daily" && (
+            <input type="date" value={anchorDate} max={todayStr()} onChange={(e) => setAnchorDate(e.target.value)} />
+          )}
+          {periodType === "weekly" && (
+            <input type="date" value={anchorDate} max={todayStr()} onChange={(e) => setAnchorDate(e.target.value)} />
+          )}
+          {periodType === "monthly" && (
+            <input type="month" value={monthValue} max={todayStr().slice(0, 7)} onChange={(e) => setMonthValue(e.target.value)} />
+          )}
+          {periodType === "custom" && (
+            <>
+              <input type="date" value={customStart} max={customEnd} onChange={(e) => setCustomStart(e.target.value)} />
+              <span className="range-sep">sampai</span>
+              <input type="date" value={customEnd} min={customStart} max={todayStr()} onChange={(e) => setCustomEnd(e.target.value)} />
+            </>
+          )}
+        </div>
+        <div className="period-label">{label}</div>
+      </div>
+
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-label"><ArrowUpRight size={14} color="#3D6B4B" /> Pemasukan</div>
+          <div className="stat-value" style={{ color: "#3D6B4B" }}>{formatRupiah(incomeTotal)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label"><ArrowDownRight size={14} color="#A23E2E" /> Pengeluaran</div>
+          <div className="stat-value" style={{ color: "#A23E2E" }}>{formatRupiah(expenseTotal)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Selisih</div>
+          <div className="stat-value" style={{ color: net >= 0 ? "#3D6B4B" : "#A23E2E" }}>{formatRupiah(net)}</div>
+        </div>
+      </div>
+
+      {topExpense ? (
+        <div className="top-cat-banner">
+          Pengeluaran terbesar pada periode ini: <b>{topExpense[0]}</b> senilai <b>{formatRupiah(topExpense[1])}</b>
+          {" "}({Math.round((topExpense[1] / expenseTotal) * 100)}% dari total pengeluaran)
+        </div>
+      ) : (
+        <div className="empty-state">Tidak ada pengeluaran pada periode ini.</div>
+      )}
+
+      {chartData.length > 0 && (
+        <div className="card chart-card">
+          <h3>Pengeluaran per Kategori</h3>
+          <SimpleBarChart data={chartData} />
+        </div>
+      )}
+
+      <div className="two-col">
+        <div className="card">
+          <h3>Rincian Pengeluaran</h3>
+          {expenseRows.length === 0 && <p className="muted">Belum ada data.</p>}
+          {expenseRows.map(([cat, amt]) => (
+            <div className="breakdown-row" key={cat}>
+              <span className="breakdown-dot" style={{ background: colorForCategory(cat, expenseCategories) }} />
+              <span className="breakdown-name">{cat}</span>
+              <span className="breakdown-amount">{formatRupiah(amt)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <h3>Rincian Pemasukan</h3>
+          {incomeRows.length === 0 && <p className="muted">Belum ada data.</p>}
+          {incomeRows.map(([cat, amt]) => (
+            <div className="breakdown-row" key={cat}>
+              <span className="breakdown-dot" style={{ background: colorForCategory(cat, incomeCategories) }} />
+              <span className="breakdown-name">{cat}</span>
+              <span className="breakdown-amount">{formatRupiah(amt)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Price comparison (Bandingkan Harga)                                    */
+/* ---------------------------------------------------------------------- */
+
+function PricesPage({ stores, storeItems, onAddStore, onRenameStore, onDeleteStore, onDuplicateStore, onAddItem, onUpdateItem, onDeleteItem, onDuplicateItems, totalBalance }) {
+  const [tab, setTab] = useState("stores"); // stores | search
+  const [activeStoreId, setActiveStoreId] = useState(null);
+
+  const activeStore = stores.find((s) => s.id === activeStoreId) || null;
+
+  if (activeStore) {
+    return (
+      <StoreDetail
+        store={activeStore}
+        allStores={stores}
+        items={storeItems.filter((it) => it.storeId === activeStore.id)}
+        onBack={() => setActiveStoreId(null)}
+        onRename={(name) => onRenameStore(activeStore.id, name)}
+        onDelete={() => { onDeleteStore(activeStore.id); setActiveStoreId(null); }}
+        onDuplicateStore={() => onDuplicateStore(activeStore.id)}
+        onAddItem={(name, price) => onAddItem(activeStore.id, name, price)}
+        onUpdateItem={onUpdateItem}
+        onDeleteItem={onDeleteItem}
+        onDuplicateItems={onDuplicateItems}
+      />
+    );
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Bandingkan Harga</h1>
+          <p className="muted">Catat harga barang di tiap toko, lalu bandingkan kapan saja</p>
+        </div>
+        {totalBalance !== undefined && <TotalBalanceBadge total={totalBalance} />}
+      </header>
+
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "stores", label: "Toko Saya", color: "#4A6FA5" },
+          { value: "search", label: "Cari Harga", color: "#4A6FA5" },
+        ]}
+      />
+
+      {tab === "stores" ? (
+        <StoresOverview
+          stores={stores}
+          storeItems={storeItems}
+          onOpen={setActiveStoreId}
+          onAddStore={onAddStore}
+          onDuplicateStore={onDuplicateStore}
+          onDeleteStore={onDeleteStore}
+        />
+      ) : (
+        <PriceSearch stores={stores} storeItems={storeItems} />
+      )}
+    </div>
+  );
+}
+
+function StoresOverview({ stores, storeItems, onOpen, onAddStore, onDuplicateStore, onDeleteStore }) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  function submitAdd(e) {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    onAddStore(newName.trim());
+    setNewName("");
+    setAdding(false);
+  }
+
+  return (
+    <div className="section-block">
+      {!adding ? (
+        <button className="btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => setAdding(true)}>
+          <Plus size={16} /> Toko Baru
+        </button>
+      ) : (
+        <form className="card form-card" onSubmit={submitAdd}>
+          <div className="field">
+            <label>Nama Toko</label>
+            <input autoFocus placeholder="Misal: Indomaret Depan Rumah" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn-secondary" onClick={() => { setAdding(false); setNewName(""); }}>Batal</button>
+            <button type="submit" className="btn-primary">Simpan</button>
+          </div>
+        </form>
+      )}
+
+      {stores.length === 0 && !adding && (
+        <div className="empty-state">Belum ada toko. Tambahkan toko pertamamu untuk mulai mencatat harga.</div>
+      )}
+
+      <div className="wallet-grid">
+        {stores.map((s) => {
+          const count = storeItems.filter((it) => it.storeId === s.id).length;
+          return (
+            <div className="wallet-card" key={s.id} style={{ borderTopColor: colorForStore(s.id, stores) }}>
+              <div className="wallet-card-top">
+                <IconBadge icon={Store} color={colorForStore(s.id, stores)} size={40} />
+                <div className="wallet-card-actions">
+                  <button className="icon-btn" onClick={() => onDuplicateStore(s.id)} title="Duplikat toko"><Copy size={14} /></button>
+                  <button className="icon-btn danger" onClick={() => setConfirmDelete(s.id)} title="Hapus toko"><Trash2 size={14} /></button>
+                </div>
+              </div>
+              <div className="wallet-card-name">{s.name}</div>
+              <div className="muted" style={{ marginTop: 2 }}>{count} barang tercatat</div>
+              <button className="btn-secondary small block" style={{ marginTop: 12 }} onClick={() => onOpen(s.id)}>
+                Kelola Barang
+              </button>
+
+              {confirmDelete === s.id && (
+                <div className="confirm-box">
+                  <span>Hapus toko "{s.name}" beserta semua daftar harganya?</span>
+                  <div>
+                    <button className="btn-secondary small" onClick={() => setConfirmDelete(null)}>Batal</button>
+                    <button className="btn-danger small" onClick={() => { onDeleteStore(s.id); setConfirmDelete(null); }}>Hapus</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StoreDetail({ store, allStores, items, onBack, onRename, onDelete, onDuplicateStore, onAddItem, onUpdateItem, onDeleteItem, onDuplicateItems }) {
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState(store.name);
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showDuplicatePicker, setShowDuplicatePicker] = useState(false);
+  const [duplicateTarget, setDuplicateTarget] = useState("");
+
+  const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name, "id"));
+  const otherStores = allStores.filter((s) => s.id !== store.id);
+
+  function toggleSelect(id) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function submitRename(e) {
+    e.preventDefault();
+    if (!nameDraft.trim()) return;
+    onRename(nameDraft.trim());
+    setRenaming(false);
+  }
+
+  function confirmDuplicateItems() {
+    if (!duplicateTarget || selected.length === 0) return;
+    onDuplicateItems(selected, duplicateTarget);
+    setSelected([]);
+    setShowDuplicatePicker(false);
+    setDuplicateTarget("");
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, minWidth: 0 }}>
+          <button className="icon-btn" onClick={onBack} style={{ marginTop: 2 }}><ArrowLeft size={16} /></button>
+          {!renaming ? (
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {store.name}
+                <button className="icon-btn" onClick={() => { setNameDraft(store.name); setRenaming(true); }}><Pencil size={13} /></button>
+              </h1>
+              <p className="muted">{items.length} barang tercatat</p>
+            </div>
+          ) : (
+            <form className="inline-add" onSubmit={submitRename}>
+              <input autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} />
+              <button type="submit" className="icon-btn"><Check size={16} /></button>
+              <button type="button" className="icon-btn" onClick={() => setRenaming(false)}><X size={16} /></button>
+            </form>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          <button className="icon-btn" onClick={onDuplicateStore} title="Duplikat toko ini"><Copy size={15} /></button>
+          <button className="icon-btn danger" onClick={() => setConfirmDelete(true)} title="Hapus toko"><Trash2 size={15} /></button>
+        </div>
+      </header>
+
+      {confirmDelete && (
+        <div className="card confirm-inline">
+          <span>Hapus toko "{store.name}" beserta semua daftar harganya? Tindakan ini tidak bisa dibatalkan.</span>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button className="btn-secondary small" onClick={() => setConfirmDelete(false)}>Batal</button>
+            <button className="btn-danger small" onClick={onDelete}>Ya, Hapus Toko</button>
+          </div>
+        </div>
+      )}
+
+      {!adding ? (
+        <button className="btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => setAdding(true)}>
+          <Plus size={16} /> Tambah Barang
+        </button>
+      ) : (
+        <ItemForm onCancel={() => setAdding(false)} onSave={(name, price) => { onAddItem(name, price); setAdding(false); }} />
+      )}
+
+      {selected.length > 0 && (
+        <div className="selection-bar">
+          <span>{selected.length} barang dipilih</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn-secondary small" onClick={() => setSelected([])}>Batal Pilih</button>
+            <button className="btn-primary small" onClick={() => setShowDuplicatePicker(true)} disabled={otherStores.length === 0}>
+              <Copy size={14} /> Duplikat ke Toko Lain
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showDuplicatePicker && (
+        <div className="card form-card">
+          <div className="field">
+            <label>Duplikat {selected.length} barang terpilih ke toko:</label>
+            <div className="chip-select">
+              {otherStores.map((s) => (
+                <button
+                  type="button"
+                  key={s.id}
+                  className={`chip ${duplicateTarget === s.id ? "active" : ""}`}
+                  style={duplicateTarget === s.id ? { borderColor: "#4A6FA5", background: "#4A6FA51f", color: "#4A6FA5" } : {}}
+                  onClick={() => setDuplicateTarget(s.id)}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="form-actions">
+            <button className="btn-secondary" onClick={() => { setShowDuplicatePicker(false); setDuplicateTarget(""); }}>Batal</button>
+            <button className="btn-primary" disabled={!duplicateTarget} onClick={confirmDuplicateItems}>Duplikat</button>
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        {sortedItems.length === 0 && <div className="empty-state">Belum ada barang di toko ini.</div>}
+        <div className="item-list">
+          {sortedItems.map((it) =>
+            editingId === it.id ? (
+              <ItemForm
+                key={it.id}
+                initial={it}
+                onCancel={() => setEditingId(null)}
+                onSave={(name, price) => { onUpdateItem(it.id, { name, price }); setEditingId(null); }}
+              />
+            ) : (
+              <div className="item-row" key={it.id}>
+                <input type="checkbox" checked={selected.includes(it.id)} onChange={() => toggleSelect(it.id)} />
+                <div className="item-main">
+                  <div className="item-name">{it.name}</div>
+                  <div className="item-meta">Diupdate {formatDateID(it.updatedAt)}</div>
+                </div>
+                <div className="item-price">{formatRupiah(it.price)}</div>
+                <div className="tx-actions">
+                  <button className="icon-btn" onClick={() => setEditingId(it.id)}><Pencil size={14} /></button>
+                  <button className="icon-btn danger" onClick={() => onDeleteItem(it.id)}><Trash2 size={14} /></button>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ItemForm({ initial, onSave, onCancel }) {
+  const [name, setName] = useState(initial?.name || "");
+  const [priceStr, setPriceStr] = useState(initial ? String(initial.price) : "");
+  const [error, setError] = useState("");
+
+  function submit(e) {
+    e.preventDefault();
+    if (!name.trim() || !priceStr || Number(priceStr) <= 0) return setError("Isi nama barang dan harga yang valid.");
+    setError("");
+    onSave(name.trim(), Number(priceStr));
+  }
+
+  return (
+    <form className="card form-card" onSubmit={submit}>
+      <div className="field-row">
+        <div className="field" style={{ flex: 2 }}>
+          <label>Nama Barang</label>
+          <input autoFocus placeholder="Misal: Minyak Goreng 1L" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="field" style={{ flex: 1 }}>
+          <label>Harga</label>
+          <div className="amount-input">
+            <span>Rp</span>
+            <input
+              inputMode="numeric"
+              placeholder="0"
+              value={priceStr ? Number(priceStr).toLocaleString("id-ID") : ""}
+              onChange={(e) => setPriceStr(e.target.value.replace(/[^\d]/g, ""))}
+            />
+          </div>
+        </div>
+      </div>
+      {error && <div className="form-error">{error}</div>}
+      <div className="form-actions">
+        <button type="button" className="btn-secondary" onClick={onCancel}>Batal</button>
+        <button type="submit" className="btn-primary">Simpan</button>
+      </div>
+    </form>
+  );
+}
+
+function PriceSearch({ stores, storeItems }) {
+  const [query, setQuery] = useState("");
+  const storeMap = Object.fromEntries(stores.map((s) => [s.id, s]));
+
+  const results = query.trim()
+    ? storeItems
+        .filter((it) => it.name.toLowerCase().includes(query.trim().toLowerCase()))
+        .sort((a, b) => a.price - b.price)
+    : [];
+
+  return (
+    <div className="section-block">
+      <div className="search-bar">
+        <Search size={15} />
+        <input autoFocus placeholder="Cari nama barang, misal: beras 5kg" value={query} onChange={(e) => setQuery(e.target.value)} />
+      </div>
+
+      {!query.trim() && (
+        <div className="empty-state">Ketik nama barang untuk membandingkan harga dari semua toko yang sudah kamu catat.</div>
+      )}
+      {query.trim() && results.length === 0 && (
+        <div className="empty-state">Tidak ada barang bernama "{query}" di catatan toko manapun.</div>
+      )}
+
+      {results.length > 0 && (
+        <div className="card">
+          <div className="item-list">
+            {results.map((it, i) => (
+              <div className="item-row price-result" key={it.id}>
+                {i === 0 && <span className="cheapest-badge">Termurah</span>}
+                <div className="item-main">
+                  <div className="item-name">{it.name}</div>
+                  <div className="item-meta">
+                    {storeMap[it.storeId]?.name || "Toko dihapus"} · Diupdate {formatDateID(it.updatedAt)}
+                  </div>
+                </div>
+                <div className="item-price">{formatRupiah(it.price)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Styles                                                                 */
+/* ---------------------------------------------------------------------- */
+
+function FontStyles() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap');
+
+      .app-root {
+        --paper: #EFE8D6;
+        --paper-2: #E5DCC5;
+        --ink: #2B2A28;
+        --ink-soft: #6b6558;
+        --line: #DED3B4;
+        --green: #3D6B4B;
+        --red: #A23E2E;
+        --gold: #C79A3B;
+        --blue: #4A6FA5;
+        font-family: 'Inter', sans-serif;
+        color: var(--ink);
+        background: var(--paper);
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        width: 100%;
+      }
+      .app-root * { box-sizing: border-box; }
+      .app-root h1, .app-root h2, .app-root h3 {
+        font-family: 'Source Serif 4', serif;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .app-root h1 { font-size: 26px; font-weight: 600; }
+      .app-root h2 { font-size: 17px; font-weight: 600; }
+      .app-root h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+      .muted { color: var(--ink-soft); font-size: 13px; margin: 4px 0 0; }
+
+      .app-shell { display: flex; flex: 1; width: 100%; }
+
+      /* Install banner */
+      .install-banner {
+        display: flex; align-items: center; gap: 10px; background: var(--ink); color: #F2ECDB;
+        padding: 10px 18px; font-size: 12.5px;
+      }
+      .install-banner-icon { flex-shrink: 0; opacity: 0.85; }
+      .install-banner-text { flex: 1; line-height: 1.4; }
+      .install-banner-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+      .install-banner .icon-btn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); color: #F2ECDB; }
+      .install-banner .icon-btn:hover { background: rgba(255,255,255,0.2); }
+      .install-banner .btn-primary.small { background: var(--gold); color: var(--ink); padding: 6px 12px; font-size: 12px; white-space: nowrap; }
+
+      /* Sidebar */
+      .sidebar {
+        width: 216px;
+        background: #E7DFC7;
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        padding: 22px 16px;
+        flex-shrink: 0;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 22px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+      .brand-mark {
+        width: 34px; height: 34px; border-radius: 9px; background: var(--green); color: #fff;
+        display: flex; align-items: center; justify-content: center; font-family: 'Source Serif 4', serif; font-size: 18px; font-weight: 700;
+      }
+      .brand-title { font-family: 'Source Serif 4', serif; font-weight: 600; font-size: 15px; line-height: 1.1; }
+      .brand-sub { font-size: 11px; color: var(--ink-soft); }
+      .side-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+      .side-nav-btn {
+        display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px;
+        background: transparent; border: none; text-align: left; font-size: 13.5px; font-weight: 500;
+        color: var(--ink-soft); cursor: pointer; font-family: inherit;
+      }
+      .side-nav-btn:hover { background: #DED3B4; color: var(--ink); }
+      .side-nav-btn.active { background: var(--ink); color: #F2ECDB; }
+      .sidebar-footer { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 10px; }
+      .total-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+      .total-value { font-family: 'Source Serif 4', serif; font-size: 19px; font-weight: 600; margin-top: 2px; }
+
+      .main-area { flex: 1; padding: 28px 34px 90px; max-width: 900px; width: 100%; }
+      .page { display: flex; flex-direction: column; gap: 18px; }
+      .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .brand-suffix { font-size: 0.55em; font-weight: 500; opacity: 0.7; }
+      .tagline { font-size: 12.5px; color: var(--ink-soft); margin: 4px 0 0; }
+
+      .hero-card {
+        background: var(--ink); color: #F2ECDB; border-radius: 16px; padding: 24px 26px;
+        position: relative; overflow: hidden;
+      }
+      .hero-label { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em; }
+      .hero-value { font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; margin: 6px 0 16px; word-break: break-word; }
+      .hero-stats { display: flex; gap: 26px; flex-wrap: wrap; }
+      .hero-stat { display: flex; align-items: center; gap: 6px; font-size: 13px; opacity: 0.9; }
+      .hero-stat b { margin-left: 2px; }
+      .hero-top-cat { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 12.5px; opacity: 0.85; }
+
+      .section-block { display: flex; flex-direction: column; gap: 10px; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; }
+      .link-btn { background: none; border: none; color: var(--green); font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 2px; font-family: inherit; }
+      .link-btn.danger { color: var(--red); }
+
+      .wallet-strip { display: flex; flex-direction: column; gap: 8px; }
+      .wallet-chip { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; width: 100%; }
+      .wallet-chip-name { font-size: 12.5px; font-weight: 600; }
+      .wallet-chip-balance { font-size: 12px; color: var(--ink-soft); margin-top: 1px; }
+
+      .icon-badge { border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+      .empty-state { text-align: center; padding: 28px 16px; color: var(--ink-soft); font-size: 13.5px; }
+
+      .tx-list { display: flex; flex-direction: column; }
+      .tx-date-divider { font-size: 11.5px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; padding: 12px 0 6px; }
+      .tx-date-divider:first-child { padding-top: 0; }
+      .tx-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #F1ECDD; }
+      .tx-row:last-child { border-bottom: none; }
+      .tx-main { flex: 1; min-width: 0; }
+      .tx-cat { font-size: 13.5px; font-weight: 600; }
+      .tx-meta { font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tx-amount { font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+      .tx-amount.income { color: var(--green); }
+      .tx-amount.expense { color: var(--red); }
+      .tx-amount.transfer { color: var(--blue); }
+      .tx-actions { display: flex; gap: 4px; }
+
+      .icon-btn { background: #F5F0E2; border: 1px solid var(--line); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); flex-shrink: 0; }
+      .icon-btn.danger:hover { background: #fbe5e1; color: var(--red); border-color: #f0c4bc; }
+      .icon-btn:hover { background: #EFE8D6; }
+
+      .btn-primary { background: var(--ink); color: #fff; border: none; border-radius: 9px; padding: 11px 16px; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; }
+      .btn-secondary { background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 11px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--ink); }
+      .btn-danger { background: var(--red); color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+      .btn-secondary.small, .btn-danger.small { padding: 7px 11px; font-size: 12px; margin-left: 6px; }
+
+      .segmented { display: flex; background: #F1ECDD; border-radius: 10px; padding: 4px; gap: 4px; }
+      .segmented-btn { flex: 1; border: none; background: transparent; padding: 10px 10px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink-soft); font-family: inherit; }
+      .segmented-btn.active { color: #fff; }
+
+      .form-card { display: flex; flex-direction: column; gap: 16px; }
+      .field { display: flex; flex-direction: column; gap: 6px; }
+      .field-row { display: flex; gap: 12px; }
+      .field-row .field { flex: 1; }
+      .field label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+      .field input, .field select {
+        border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; font-size: 16px; font-family: inherit; background: #FCFAF2; color: var(--ink);
+      }
+      .field input:focus, .field select:focus { outline: 2px solid var(--gold); outline-offset: 0; }
+      .amount-input { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; background: #FCFAF2; padding: 0 12px; }
+      .amount-input span { color: var(--ink-soft); font-size: 14px; margin-right: 4px; }
+      .amount-input input { border: none; background: transparent; padding: 12px 0; font-size: 18px; font-weight: 600; flex: 1; }
+      .amount-input input:focus { outline: none; }
+
+      .chip-select { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chip {
+        border: 1px solid var(--line); background: #FCFAF2; border-radius: 20px; padding: 8px 13px; font-size: 12.5px; font-weight: 600;
+        cursor: pointer; font-family: inherit; color: var(--ink); display: flex; align-items: center; gap: 5px;
+      }
+      .chip-add { color: var(--ink-soft); border-style: dashed; }
+      .inline-add { display: flex; gap: 6px; align-items: center; }
+      .inline-add input { flex: 1; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 14px; font-family: inherit; background: #FCFAF2; }
+
+      .color-select { display: flex; gap: 8px; }
+      .color-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+      .color-dot.active { border-color: var(--ink); }
+
+      .form-error { color: var(--red); font-size: 12.5px; background: #fbe5e1; border-radius: 8px; padding: 8px 12px; }
+      .form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+      .search-bar { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; color: var(--ink-soft); }
+      .search-bar input { border: none; outline: none; background: transparent; flex: 1; font-size: 15px; font-family: inherit; color: var(--ink); }
+      .filter-row { display: flex; gap: 10px; }
+      .filter-row select { border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; font-size: 12.5px; font-family: inherit; background: #fff; flex: 1; }
+
+      .wallet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+      .wallet-card { background: #fff; border: 1px solid var(--line); border-top: 3px solid; border-radius: 14px; padding: 16px; position: relative; }
+      .wallet-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+      .wallet-card-actions { display: flex; gap: 4px; }
+      .wallet-card-name { font-size: 14px; font-weight: 600; margin-top: 12px; }
+      .wallet-card-balance { font-family: 'Source Serif 4', serif; font-size: 19px; font-weight: 600; margin-top: 2px; }
+      .confirm-box { position: absolute; inset: 0; background: rgba(255,255,255,0.98); border-radius: 13px; padding: 14px; display: flex; flex-direction: column; justify-content: center; gap: 10px; font-size: 12.5px; }
+      .confirm-box div { display: flex; justify-content: flex-end; }
+      .danger-zone { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+      .period-controls { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+      .period-controls input { border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; font-size: 14px; font-family: inherit; background: #FCFAF2; }
+      .range-sep { font-size: 12.5px; color: var(--ink-soft); }
+      .period-label { margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
+
+      .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .stat-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+      .stat-label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+      .stat-value { font-family: 'Source Serif 4', serif; font-size: 20px; font-weight: 600; margin-top: 6px; word-break: break-word; }
+
+      .top-cat-banner { background: #FBF0D6; border: 1px solid #EAD9A0; color: #6b5518; border-radius: 10px; padding: 12px 16px; font-size: 13px; }
+
+      .chart-card { padding-bottom: 8px; }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .breakdown-row { display: flex; align-items: center; gap: 9px; padding: 7px 0; border-bottom: 1px solid #F1ECDD; font-size: 13px; }
+      .breakdown-row:last-child { border-bottom: none; }
+      .breakdown-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+      .breakdown-name { flex: 1; }
+      .breakdown-amount { font-weight: 600; }
+
+      .btn-secondary.small.block { display: block; width: 100%; margin-left: 0; text-align: center; }
+      .btn-primary.small { padding: 8px 12px; font-size: 12px; }
+      .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .item-list { display: flex; flex-direction: column; }
+      .item-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #F1ECDD; }
+      .item-row:last-child { border-bottom: none; }
+      .item-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); flex-shrink: 0; cursor: pointer; }
+      .item-main { flex: 1; min-width: 0; }
+      .item-name { font-size: 13.5px; font-weight: 600; }
+      .item-meta { font-size: 12px; color: var(--ink-soft); }
+      .item-price { font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+      .price-result { gap: 10px; }
+      .cheapest-badge { background: var(--green); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.03em; }
+
+      .selection-bar {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+        background: #FBF0D6; border: 1px solid #EAD9A0; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #6b5518;
+      }
+      .confirm-inline { display: flex; flex-direction: column; font-size: 13px; }
+
+      .budget-warning { background: #FBF0D6; border: 1px solid #EAD9A0; color: #6b5518; border-radius: 10px; padding: 10px 14px; font-size: 12.5px; line-height: 1.5; }
+      .budget-warning.over { background: #fbe5e1; border-color: #f0c4bc; color: #7a2e20; }
+
+      .budget-list { display: flex; flex-direction: column; gap: 16px; }
+      .bar-track { background: #F1ECDD; border-radius: 6px; height: 12px; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: 6px; }
+      .budget-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; gap: 8px; }
+      .budget-row-name { font-size: 13px; font-weight: 600; }
+      .budget-row-pct { font-size: 12px; font-weight: 700; color: var(--green); flex-shrink: 0; }
+      .budget-row-pct.warn { color: var(--gold); }
+      .budget-row-pct.over { color: var(--red); }
+      .budget-row-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 5px; }
+
+      .balance-badge { text-align: right; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; flex-shrink: 0; }
+      .balance-badge-label { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+      .balance-badge-value { font-family: 'Source Serif 4', serif; font-size: 15px; font-weight: 700; margin-top: 1px; white-space: nowrap; }
+
+      .manage-menu { display: flex; flex-direction: column; gap: 10px; }
+      .manage-item {
+        display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+        padding: 16px; cursor: pointer; font-family: inherit; text-align: left; width: 100%; color: var(--ink-soft);
+      }
+      .manage-item:hover { background: #FCFAF2; }
+      .manage-item-text { flex: 1; }
+      .manage-item-title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+      .manage-item-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+      .category-list { display: flex; flex-direction: column; }
+      .category-row { padding: 12px 0; border-bottom: 1px solid #F1ECDD; }
+      .category-row:last-child { border-bottom: none; }
+      .category-row-top { display: flex; align-items: center; gap: 10px; }
+      .category-row-main { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+      .category-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+      .category-name { font-size: 13.5px; font-weight: 600; }
+      .category-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+      .category-budget { margin-top: 10px; padding: 12px 13px; background: #FCFAF2; border: 1px solid var(--line); border-radius: 10px; }
+
+      .about-card p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.6; color: var(--ink); }
+      .about-list { margin: 0 0 12px; padding-left: 18px; font-size: 13.5px; line-height: 1.9; }
+      .about-list a { color: var(--blue); font-weight: 600; text-decoration: none; }
+      .about-list a:hover { text-decoration: underline; }
+
+      .simple-bar-chart { display: flex; flex-direction: column; gap: 11px; }
+      .bar-row { display: grid; grid-template-columns: 118px 1fr auto; align-items: center; gap: 10px; }
+      .bar-label { font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .bar-value { font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+      .mobile-nav { display: none; }
+      .save-toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 12px; z-index: 40; }
+
+      @media (max-width: 820px) {
+        .app-shell { flex-direction: column; }
+        .sidebar { display: none; }
+        .main-area { padding: 18px 14px 90px; max-width: 100%; }
+        .stat-grid { grid-template-columns: 1fr; }
+        .two-col { grid-template-columns: 1fr; }
+        .page-header h1 { font-size: 22px; }
+        .hero-card { padding: 20px 18px; }
+        .hero-value { font-size: 28px; }
+        .mobile-nav {
+          display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #E7DFC7; border-top: 1px solid var(--line);
+          padding: 8px 4px calc(env(safe-area-inset-bottom, 0px) + 6px); z-index: 30;
+        }
+        .mobile-nav-btn {
+          flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none;
+          font-size: 10.5px; font-weight: 600; color: var(--ink-soft); padding: 6px 0; font-family: inherit; min-height: 44px;
+        }
+        .mobile-nav-btn.active { color: var(--ink); }
+        .wallet-strip { overflow-x: auto; }
+        .install-banner { padding: 10px 14px; }
+        .icon-btn { width: 36px; height: 36px; }
+        .bar-row { grid-template-columns: 82px 1fr auto; }
+      }
+
+      @media (max-width: 380px) {
+        .hero-value { font-size: 24px; }
+        .wallet-chip { min-width: 150px; }
+      }
+    `}</style>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
+    </script>
+  </body>
+</html>

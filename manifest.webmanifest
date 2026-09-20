@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "IRiT - Ingat Riwayat Transaksi",
+  "short_name": "IRiT",
+  "description": "Aplikasi pencatatan keuangan rumah tangga: pemasukan, pengeluaran, dompet, pindah dompet, budget, bandingkan harga, dan laporan.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2B2A28",
+  "background_color": "#EFE8D6",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
