@@ -641,8 +641,6 @@ function Dashboard({ wallets, walletBalances, totalBalance, transactions, income
   const now = new Date();
   const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const thisMonth = transactions.filter((t) => t.date.startsWith(monthStr));
-  const incomeMonth = thisMonth.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0);
-  const expenseMonth = thisMonth.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0);
 
   const byCategory = {};
   thisMonth.filter((t) => t.type === "expense").forEach((t) => {
@@ -664,18 +662,6 @@ function Dashboard({ wallets, walletBalances, totalBalance, transactions, income
       <section className="hero-card">
         <div className="hero-label">Total Saldo Semua Dompet</div>
         <div className="hero-value">{formatRupiah(totalBalance)}</div>
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <ArrowUpRight size={16} color="#3D6B4B" />
-            <span>Pemasukan bulan ini</span>
-            <b style={{ color: "#3D6B4B" }}>{formatRupiah(incomeMonth)}</b>
-          </div>
-          <div className="hero-stat">
-            <ArrowDownRight size={16} color="#A23E2E" />
-            <span>Pengeluaran bulan ini</span>
-            <b style={{ color: "#A23E2E" }}>{formatRupiah(expenseMonth)}</b>
-          </div>
-        </div>
         {topCategory && (
           <div className="hero-top-cat">
             Kategori pengeluaran terbesar bulan ini: <b>{topCategory[0]}</b> ({formatRupiah(topCategory[1])})
@@ -1689,23 +1675,6 @@ function BudgetStatusPanel({ budgets, transactions }) {
 /*  Reports page                                                           */
 /* ---------------------------------------------------------------------- */
 
-function SimpleBarChart({ data }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
-  return (
-    <div className="simple-bar-chart">
-      {data.map((d) => (
-        <div className="bar-row" key={d.name}>
-          <div className="bar-label">{d.name}</div>
-          <div className="bar-track">
-            <div className="bar-fill" style={{ width: `${Math.max(4, (d.value / max) * 100)}%`, background: d.color }} />
-          </div>
-          <div className="bar-value">{formatRupiah(d.value)}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ReportsPage({ transactions, wallets, incomeCategories, expenseCategories, budgets }) {
   const [periodType, setPeriodType] = useState("monthly"); // daily | weekly | monthly | custom
   const [anchorDate, setAnchorDate] = useState(todayStr());
@@ -1749,8 +1718,6 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
     incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
   });
   const incomeRows = Object.entries(incomeByCategory).sort((a, b) => b[1] - a[1]);
-
-  const chartData = expenseRows.map(([cat, amt]) => ({ name: cat, value: amt, color: colorForCategory(cat, expenseCategories) }));
 
   return (
     <div className="page">
@@ -1820,13 +1787,6 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
         <div className="empty-state">Tidak ada pengeluaran pada periode ini.</div>
       )}
 
-      {chartData.length > 0 && (
-        <div className="card chart-card">
-          <h3>Pengeluaran per Kategori</h3>
-          <SimpleBarChart data={chartData} />
-        </div>
-      )}
-
       <div className="two-col">
         <div className="card">
           <h3>Rincian Pengeluaran</h3>
@@ -1835,6 +1795,7 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
             <div className="breakdown-row" key={cat}>
               <span className="breakdown-dot" style={{ background: colorForCategory(cat, expenseCategories) }} />
               <span className="breakdown-name">{cat}</span>
+              <span className="breakdown-pct">{expenseTotal > 0 ? Math.round((amt / expenseTotal) * 100) : 0}%</span>
               <span className="breakdown-amount">{formatRupiah(amt)}</span>
             </div>
           ))}
@@ -1897,7 +1858,7 @@ function PricesPage({ stores, storeItems, onAddStore, onRenameStore, onDeleteSto
         value={tab}
         onChange={setTab}
         options={[
-          { value: "stores", label: "Toko Saya", color: "#4A6FA5" },
+          { value: "stores", label: "Toko", color: "#4A6FA5" },
           { value: "search", label: "Cari Harga", color: "#4A6FA5" },
         ]}
       />
@@ -2371,9 +2332,9 @@ function FontStyles() {
         border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; font-size: 16px; font-family: inherit; background: #FCFAF2; color: var(--ink);
       }
       .field input:focus, .field select:focus { outline: 2px solid var(--gold); outline-offset: 0; }
-      .amount-input { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; background: #FCFAF2; padding: 0 12px; }
-      .amount-input span { color: var(--ink-soft); font-size: 14px; margin-right: 4px; }
-      .amount-input input { border: none; background: transparent; padding: 12px 0; font-size: 18px; font-weight: 600; flex: 1; }
+      .amount-input { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; background: #FCFAF2; padding: 0 12px; min-width: 0; }
+      .amount-input span { color: var(--ink-soft); font-size: 14px; margin-right: 4px; flex-shrink: 0; }
+      .amount-input input { border: none; background: transparent; padding: 12px 0; font-size: 18px; font-weight: 600; flex: 1; min-width: 0; width: 100%; }
       .amount-input input:focus { outline: none; }
 
       .chip-select { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2382,8 +2343,9 @@ function FontStyles() {
         cursor: pointer; font-family: inherit; color: var(--ink); display: flex; align-items: center; gap: 5px;
       }
       .chip-add { color: var(--ink-soft); border-style: dashed; }
-      .inline-add { display: flex; gap: 6px; align-items: center; }
-      .inline-add input { flex: 1; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 14px; font-family: inherit; background: #FCFAF2; }
+      .inline-add { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+      .inline-add input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 14px; font-family: inherit; background: #FCFAF2; }
+      .inline-add > .amount-input { flex: 1 1 160px; min-width: 0; }
 
       .color-select { display: flex; gap: 8px; }
       .color-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
@@ -2425,6 +2387,7 @@ function FontStyles() {
       .breakdown-row:last-child { border-bottom: none; }
       .breakdown-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
       .breakdown-name { flex: 1; }
+      .breakdown-pct { color: var(--ink-soft); font-size: 11.5px; font-weight: 600; flex-shrink: 0; }
       .breakdown-amount { font-weight: 600; }
 
       .btn-secondary.small.block { display: block; width: 100%; margin-left: 0; text-align: center; }
@@ -2490,11 +2453,6 @@ function FontStyles() {
       .about-list a { color: var(--blue); font-weight: 600; text-decoration: none; }
       .about-list a:hover { text-decoration: underline; }
 
-      .simple-bar-chart { display: flex; flex-direction: column; gap: 11px; }
-      .bar-row { display: grid; grid-template-columns: 118px 1fr auto; align-items: center; gap: 10px; }
-      .bar-label { font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .bar-value { font-size: 12px; font-weight: 700; white-space: nowrap; }
-
       .mobile-nav { display: none; }
       .save-toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 12px; z-index: 40; }
 
@@ -2516,10 +2474,9 @@ function FontStyles() {
           font-size: 10.5px; font-weight: 600; color: var(--ink-soft); padding: 6px 0; font-family: inherit; min-height: 44px;
         }
         .mobile-nav-btn.active { color: var(--ink); }
-        .wallet-strip { overflow-x: auto; }
         .install-banner { padding: 10px 14px; }
         .icon-btn { width: 36px; height: 36px; }
-        .bar-row { grid-template-columns: 82px 1fr auto; }
+        .field-row { flex-direction: column; }
       }
 
       @media (max-width: 380px) {
