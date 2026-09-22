@@ -1671,6 +1671,40 @@ function BudgetStatusPanel({ budgets, transactions }) {
   );
 }
 
+function CategoryPieChart({ data }) {
+  const total = data.reduce((a, d) => a + d.value, 0);
+  let cumulative = 0;
+  const stops = data
+    .map((d) => {
+      const start = total > 0 ? (cumulative / total) * 100 : 0;
+      cumulative += d.value;
+      const end = total > 0 ? (cumulative / total) * 100 : 0;
+      return `${d.color} ${start}% ${end}%`;
+    })
+    .join(", ");
+  const gradient = total > 0 ? `conic-gradient(${stops})` : "#F1ECDD";
+
+  return (
+    <div className="pie-chart-wrap">
+      <div className="pie-chart" style={{ background: gradient }}>
+        <div className="pie-chart-hole">
+          <div className="pie-chart-hole-label">Total</div>
+          <div className="pie-chart-hole-value">{formatRupiah(total)}</div>
+        </div>
+      </div>
+      <div className="pie-legend">
+        {data.map((d) => (
+          <div className="pie-legend-row" key={d.name}>
+            <span className="pie-legend-dot" style={{ background: d.color }} />
+            <span className="pie-legend-name">{d.name}</span>
+            <span className="pie-legend-pct">{total > 0 ? Math.round((d.value / total) * 100) : 0}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------------- */
 /*  Reports page                                                           */
 /* ---------------------------------------------------------------------- */
@@ -1718,6 +1752,8 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
     incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
   });
   const incomeRows = Object.entries(incomeByCategory).sort((a, b) => b[1] - a[1]);
+
+  const pieData = expenseRows.map(([cat, amt]) => ({ name: cat, value: amt, color: colorForCategory(cat, expenseCategories) }));
 
   return (
     <div className="page">
@@ -1787,6 +1823,13 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
         <div className="empty-state">Tidak ada pengeluaran pada periode ini.</div>
       )}
 
+      {pieData.length > 0 && (
+        <div className="card">
+          <h3>Pengeluaran per Kategori</h3>
+          <CategoryPieChart data={pieData} />
+        </div>
+      )}
+
       <div className="two-col">
         <div className="card">
           <h3>Rincian Pengeluaran</h3>
@@ -1795,7 +1838,6 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
             <div className="breakdown-row" key={cat}>
               <span className="breakdown-dot" style={{ background: colorForCategory(cat, expenseCategories) }} />
               <span className="breakdown-name">{cat}</span>
-              <span className="breakdown-pct">{expenseTotal > 0 ? Math.round((amt / expenseTotal) * 100) : 0}%</span>
               <span className="breakdown-amount">{formatRupiah(amt)}</span>
             </div>
           ))}
@@ -2381,13 +2423,25 @@ function FontStyles() {
 
       .top-cat-banner { background: #FBF0D6; border: 1px solid #EAD9A0; color: #6b5518; border-radius: 10px; padding: 12px 16px; font-size: 13px; }
 
-      .chart-card { padding-bottom: 8px; }
+      .pie-chart-wrap { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+      .pie-chart { width: 160px; height: 160px; border-radius: 50%; position: relative; flex-shrink: 0; }
+      .pie-chart-hole {
+        position: absolute; inset: 19%; background: #fff; border-radius: 50%;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4px;
+      }
+      .pie-chart-hole-label { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+      .pie-chart-hole-value { font-family: 'Source Serif 4', serif; font-size: 13px; font-weight: 700; margin-top: 2px; }
+      .pie-legend { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 9px; }
+      .pie-legend-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+      .pie-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+      .pie-legend-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .pie-legend-pct { font-weight: 700; flex-shrink: 0; }
+
       .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
       .breakdown-row { display: flex; align-items: center; gap: 9px; padding: 7px 0; border-bottom: 1px solid #F1ECDD; font-size: 13px; }
       .breakdown-row:last-child { border-bottom: none; }
       .breakdown-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
       .breakdown-name { flex: 1; }
-      .breakdown-pct { color: var(--ink-soft); font-size: 11.5px; font-weight: 600; flex-shrink: 0; }
       .breakdown-amount { font-weight: 600; }
 
       .btn-secondary.small.block { display: block; width: 100%; margin-left: 0; text-align: center; }
@@ -2482,6 +2536,8 @@ function FontStyles() {
       @media (max-width: 380px) {
         .hero-value { font-size: 24px; }
         .wallet-chip { min-width: 150px; }
+        .pie-chart { width: 130px; height: 130px; }
+        .pie-chart-wrap { justify-content: center; }
       }
     `}</style>
   );
