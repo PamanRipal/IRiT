@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
     <meta name="theme-color" content="#2B2A28" />
-    <meta name="description" content="IRiT - Ingat Riwayat Transaksi. Aplikasi pencatatan keuangan rumah tangga — pemasukan, pengeluaran, dompet, pindah dompet, kategori & budget, bandingkan harga toko, laporan, dan cetak invoice. Data tersimpan langsung di perangkatmu." />
+    <meta name="description" content="IRiT - Ingat Riwayat Transaksi. Aplikasi pencatatan keuangan rumah tangga — pemasukan, pengeluaran, dompet, pindah dompet, kategori & budget dengan warna kustom, bandingkan harga toko, laporan, dan cetak invoice. Data tersimpan langsung di perangkatmu." />
 
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" href="./favicon.png" />
@@ -82,6 +82,7 @@ const LayoutGrid = makeIcon([], <g><rect x="3" y="3" width="8" height="8" rx="1.
 const Tag = makeIcon(["M20.6 12.4 12.7 4.5a2 2 0 0 0-1.4-.5H5a1 1 0 0 0-1 1v6.3a2 2 0 0 0 .6 1.4l7.9 7.9a2 2 0 0 0 2.8 0l5.3-5.3a2 2 0 0 0 0-2.8Z"], <circle cx="8.3" cy="8.3" r="1.3" fill="currentColor" stroke="none" />);
 const Info = makeIcon(["M12 16v-4", "M12 8h.01"], <circle cx="12" cy="12" r="9" />);
 const Printer = makeIcon([], <g><rect x="6" y="2" width="12" height="7" rx="1" /><rect x="4" y="9" width="16" height="8" rx="1.5" /><rect x="6" y="14" width="12" height="8" rx="1" /></g>);
+const FileText = makeIcon(["M14 2v6h6", "M8 13h8M8 17h8M8 9h2", "M6 2h8l6 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z"]);
 
 /* ---------------------------------------------------------------------- */
 /*  Constants & helpers                                                   */
@@ -159,7 +160,11 @@ function addDays(dateStr, n) {
 function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
-function colorForCategory(cat, list) {
+function colorForCategory(cat, list, type, categoryColors) {
+  if (type && categoryColors) {
+    const custom = categoryColors[`${type}:${cat}`];
+    if (custom) return custom;
+  }
   const idx = list.indexOf(cat);
   return CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length];
 }
@@ -299,6 +304,7 @@ function App() {
   const [stores, setStores] = useState([]);
   const [storeItems, setStoreItems] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [categoryColors, setCategoryColors] = useState({});
   const [saveError, setSaveError] = useState(false);
 
   /* ---------------- load once (from localStorage) ---------------- */
@@ -314,6 +320,7 @@ function App() {
         if (data.stores) setStores(data.stores);
         if (data.storeItems) setStoreItems(data.storeItems);
         if (data.budgets) setBudgets(data.budgets);
+        if (data.categoryColors) setCategoryColors(data.categoryColors);
       }
     } catch (e) {
       // no saved data yet, or it was unreadable — start fresh
@@ -326,13 +333,13 @@ function App() {
   useEffect(() => {
     if (!loaded) return;
     try {
-      const payload = JSON.stringify({ wallets, incomeCategories, expenseCategories, transactions, stores, storeItems, budgets });
+      const payload = JSON.stringify({ wallets, incomeCategories, expenseCategories, transactions, stores, storeItems, budgets, categoryColors });
       localStorage.setItem(STORAGE_KEY, payload);
       setSaveError(false);
     } catch (e) {
       setSaveError(true);
     }
-  }, [wallets, incomeCategories, expenseCategories, transactions, stores, storeItems, budgets, loaded]);
+  }, [wallets, incomeCategories, expenseCategories, transactions, stores, storeItems, budgets, categoryColors, loaded]);
 
   /* ---------------- derived data ---------------- */
   const walletBalances = useMemo(() => {
@@ -403,6 +410,15 @@ function App() {
       setBudgets((prev) => prev.map((b) => (b.category === oldName ? { ...b, category: trimmed } : b)));
     }
     setTransactions((prev) => prev.map((t) => (t.type === type && t.category === oldName ? { ...t, category: trimmed } : t)));
+    setCategoryColors((prev) => {
+      const oldKey = `${type}:${oldName}`;
+      if (!(oldKey in prev)) return prev;
+      const next = { ...prev };
+      const color = next[oldKey];
+      delete next[oldKey];
+      next[`${type}:${trimmed}`] = color;
+      return next;
+    });
   }, []);
 
   const deleteCategory = useCallback((type, name) => {
@@ -414,6 +430,17 @@ function App() {
       setBudgets((prev) => prev.filter((b) => b.category !== name));
     }
     setTransactions((prev) => prev.map((t) => (t.type === type && t.category === name ? { ...t, category: "Lainnya" } : t)));
+    setCategoryColors((prev) => {
+      const key = `${type}:${name}`;
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const setCategoryColor = useCallback((type, category, color) => {
+    setCategoryColors((prev) => ({ ...prev, [`${type}:${category}`]: color }));
   }, []);
 
   const setBudget = useCallback((category, limit) => {
@@ -439,6 +466,7 @@ function App() {
     setStores([]);
     setStoreItems([]);
     setBudgets([]);
+    setCategoryColors({});
   }, []);
 
   /* ---------------- store & price mutators ---------------- */
@@ -550,6 +578,7 @@ function App() {
               budgets={budgets}
               transactions={transactions}
               totalBalance={totalBalance}
+              categoryColors={categoryColors}
               onSave={(tx) => {
                 addTransaction(tx);
                 setPage("dashboard");
@@ -589,6 +618,7 @@ function App() {
               incomeCategories={incomeCategories}
               expenseCategories={expenseCategories}
               budgets={budgets}
+              categoryColors={categoryColors}
             />
           )}
           {page === "manage" && (
@@ -609,6 +639,8 @@ function App() {
               onDeleteCategory={deleteCategory}
               onSetBudget={setBudget}
               onDeleteBudget={deleteBudget}
+              categoryColors={categoryColors}
+              onSetCategoryColor={setCategoryColor}
             />
           )}
         </main>
@@ -812,7 +844,7 @@ function TransactionList({ transactions, wallets, onDelete, onEdit, compact }) {
 /*  Add / Edit Transaction                                                 */
 /* ---------------------------------------------------------------------- */
 
-function AddTransaction({ wallets, incomeCategories, expenseCategories, addCategory, onSave, initial, onCancel, budgets, transactions, totalBalance }) {
+function AddTransaction({ wallets, incomeCategories, expenseCategories, addCategory, onSave, initial, onCancel, budgets, transactions, totalBalance, categoryColors }) {
   const [type, setType] = useState(initial?.type || "expense");
   const [amountStr, setAmountStr] = useState(initial ? String(initial.amount) : "");
   const [category, setCategory] = useState(initial?.category || "");
@@ -917,7 +949,7 @@ function AddTransaction({ wallets, incomeCategories, expenseCategories, addCateg
                   type="button"
                   key={c}
                   className={`chip ${category === c ? "active" : ""}`}
-                  style={category === c ? { borderColor: colorForCategory(c, categories), background: `${colorForCategory(c, categories)}1f`, color: colorForCategory(c, categories) } : {}}
+                  style={category === c ? (() => { const cc = colorForCategory(c, categories, type, categoryColors); return { borderColor: cc, background: `${cc}1f`, color: cc }; })() : {}}
                   onClick={() => setCategory(c)}
                 >
                   {c}
@@ -1009,12 +1041,128 @@ function AddTransaction({ wallets, incomeCategories, expenseCategories, addCateg
 /*  History page                                                           */
 /* ---------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------- */
+/*  Detail view modal (used from Riwayat)                                  */
+/* ---------------------------------------------------------------------- */
+
+function DetailModal({ onClose, transactions, wallets }) {
+  const [content, setContent] = useState("both"); // expense | income | both
+  const [monthValue, setMonthValue] = useState(todayStr().slice(0, 7));
+
+  const walletMap = Object.fromEntries(wallets.map((w) => [w.id, w]));
+
+  const [y, m] = monthValue.split("-").map(Number);
+  const start = `${monthValue}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const end = `${monthValue}-${String(lastDay).padStart(2, "0")}`;
+  const label = `${MONTHS_ID[m - 1]} ${y}`;
+
+  const inRange = transactions.filter((t) => t.type !== "transfer" && t.date >= start && t.date <= end);
+  const incomeTotal = inRange.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0);
+  const expenseTotal = inRange.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0);
+
+  const rows = inRange
+    .filter((t) => (content === "both" ? true : t.type === content))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
+
+  const title = content === "expense" ? "Detail Pengeluaran" : content === "income" ? "Detail Pemasukan" : "Detail Transaksi";
+
+  let lastDate = null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-box">
+        <div className="modal-header">
+          <h2>Lihat Detil</h2>
+          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div className="invoice-controls">
+          <div className="field">
+            <label>Tampilkan</label>
+            <Segmented
+              value={content}
+              onChange={setContent}
+              options={[
+                { value: "expense", label: "Pengeluaran", color: "#A23E2E" },
+                { value: "income", label: "Pemasukan", color: "#3D6B4B" },
+                { value: "both", label: "Keduanya", color: "#4A6FA5" },
+              ]}
+            />
+          </div>
+          <div className="field">
+            <label>Bulan</label>
+            <input type="month" value={monthValue} max={todayStr().slice(0, 7)} onChange={(e) => setMonthValue(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="invoice-print-area">
+          <div className="invoice-doc">
+            <div className="invoice-doc-header">
+              <div className="invoice-brand">IRiT <span>- Ingat Riwayat Transaksi</span></div>
+              <div className="invoice-title">{title}</div>
+              <div className="invoice-period">Periode: {label}</div>
+            </div>
+
+            <div className="detail-list">
+              {rows.length === 0 && <div className="invoice-empty">Tidak ada transaksi pada bulan ini.</div>}
+              {rows.map((t) => {
+                const showDate = t.date !== lastDate;
+                lastDate = t.date;
+                return (
+                  <React.Fragment key={t.id}>
+                    {showDate && <div className="detail-date-divider">{formatDateID(t.date, true)}</div>}
+                    <div className="detail-row">
+                      <div className="detail-row-main">
+                        <div className="detail-category">{t.category}</div>
+                        <div className="detail-sub">
+                          {walletMap[t.walletId]?.name || "Dompet dihapus"}
+                          {t.note ? ` · ${t.note}` : ""}
+                        </div>
+                      </div>
+                      <div className={`detail-amount ${t.type}`}>
+                        {t.type === "income" ? "+" : "-"}{formatRupiah(t.amount)}
+                      </div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            <div className="invoice-summary">
+              {(content === "income" || content === "both") && (
+                <div className="invoice-summary-row"><span>Total Pemasukan</span><b className="income">{formatRupiah(incomeTotal)}</b></div>
+              )}
+              {(content === "expense" || content === "both") && (
+                <div className="invoice-summary-row"><span>Total Pengeluaran</span><b className="expense">{formatRupiah(expenseTotal)}</b></div>
+              )}
+              {content === "both" && (
+                <div className="invoice-summary-row total"><span>Selisih</span><b>{formatRupiah(incomeTotal - expenseTotal)}</b></div>
+              )}
+            </div>
+
+            <div className="invoice-footer">Dilihat dari aplikasi IRiT pada {formatDateID(todayStr(), true)}</div>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn-secondary" onClick={onClose}>Tutup</button>
+          <button className="btn-primary" onClick={() => window.print()}>
+            <Printer size={16} /> Cetak
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HistoryPage({ transactions, wallets, incomeCategories, expenseCategories, onDelete, onUpdate, addCategory }) {
   const [filterType, setFilterType] = useState("all");
   const [filterWallet, setFilterWallet] = useState("all");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
 
   const filtered = transactions.filter((t) => {
     if (filterType !== "all" && t.type !== filterType) return false;
@@ -1047,10 +1195,19 @@ function HistoryPage({ transactions, wallets, incomeCategories, expenseCategorie
           <h1>Riwayat</h1>
           <p className="muted">{transactions.length} transaksi tercatat</p>
         </div>
-        <button className="icon-btn" onClick={() => setShowFilters((s) => !s)}>
-          <Filter size={17} />
-        </button>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button className="btn-secondary" onClick={() => setShowDetail(true)}>
+            <FileText size={15} /> Lihat Detil
+          </button>
+          <button className="icon-btn" onClick={() => setShowFilters((s) => !s)}>
+            <Filter size={17} />
+          </button>
+        </div>
       </header>
+
+      {showDetail && (
+        <DetailModal onClose={() => setShowDetail(false)} transactions={transactions} wallets={wallets} />
+      )}
 
       <div className="search-bar">
         <Search size={15} />
@@ -1337,6 +1494,7 @@ function WalletForm({ initial, onSave, onCancel }) {
 function ManagePage({
   wallets, walletBalances, onAddWallet, onUpdateWallet, onDeleteWallet, onTransfer, onResetAll,
   budgets, incomeCategories, expenseCategories, transactions, onAddCategory, onRenameCategory, onDeleteCategory, onSetBudget, onDeleteBudget,
+  categoryColors, onSetCategoryColor,
 }) {
   const [subPage, setSubPage] = useState(null); // null | "wallets" | "categories" | "about"
 
@@ -1367,6 +1525,8 @@ function ManagePage({
         onDeleteCategory={onDeleteCategory}
         onSetBudget={onSetBudget}
         onDeleteBudget={onDeleteBudget}
+        categoryColors={categoryColors}
+        onSetCategoryColor={onSetCategoryColor}
       />
     );
   }
@@ -1416,6 +1576,7 @@ function ManagePage({
 function CategoriesPage({
   onBack, incomeCategories, expenseCategories, budgets, transactions,
   onAddCategory, onRenameCategory, onDeleteCategory, onSetBudget, onDeleteBudget,
+  categoryColors, onSetCategoryColor,
 }) {
   const [type, setType] = useState("expense"); // expense | income
   const [adding, setAdding] = useState(false);
@@ -1424,6 +1585,7 @@ function CategoriesPage({
   const [renameDraft, setRenameDraft] = useState("");
   const [budgetEditCat, setBudgetEditCat] = useState(null);
   const [budgetDraft, setBudgetDraft] = useState("");
+  const [colorEditCat, setColorEditCat] = useState(null);
   const [error, setError] = useState("");
 
   const categories = type === "income" ? incomeCategories : expenseCategories;
@@ -1530,7 +1692,13 @@ function CategoriesPage({
                   ) : (
                     <>
                       <div className="category-row-main">
-                        <span className="category-dot" style={{ background: colorForCategory(cat, categories) }} />
+                        <button
+                          type="button"
+                          className="category-dot-btn"
+                          style={{ background: colorForCategory(cat, categories, type, categoryColors) }}
+                          onClick={() => setColorEditCat(colorEditCat === cat ? null : cat)}
+                          title="Ganti warna"
+                        />
                         <span className="category-name">{cat}</span>
                       </div>
                       <div className="category-row-actions">
@@ -1542,6 +1710,20 @@ function CategoriesPage({
                     </>
                   )}
                 </div>
+
+                {colorEditCat === cat && (
+                  <div className="color-select" style={{ marginTop: 10 }}>
+                    {CATEGORY_PALETTE.map((c) => (
+                      <button
+                        type="button"
+                        key={c}
+                        className={`color-dot ${colorForCategory(cat, categories, type, categoryColors) === c ? "active" : ""}`}
+                        style={{ background: c }}
+                        onClick={() => { onSetCategoryColor(type, cat, c); setColorEditCat(null); }}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 {renamingCat === cat && error && <div className="form-error" style={{ marginTop: 8 }}>{error}</div>}
 
@@ -1674,16 +1856,32 @@ function BudgetStatusPanel({ budgets, transactions }) {
 
 function CategoryPieChart({ data }) {
   const total = data.reduce((a, d) => a + d.value, 0);
-  let cumulative = 0;
-  const stops = data
-    .map((d) => {
-      const start = total > 0 ? (cumulative / total) * 100 : 0;
+  const DIVIDER_GAP = 1; // % of the full circle reserved as a divider line between adjacent slices
+  const DIVIDER_COLOR = "#ffffff"; // matches the white card behind the chart
+
+  let gradient = "#F1ECDD";
+  if (total > 0 && data.length > 0) {
+    let cumulative = 0;
+    const segs = data.map((d) => {
+      const start = (cumulative / total) * 100;
       cumulative += d.value;
-      const end = total > 0 ? (cumulative / total) * 100 : 0;
-      return `${d.color} ${start}% ${end}%`;
-    })
-    .join(", ");
-  const gradient = total > 0 ? `conic-gradient(${stops})` : "#F1ECDD";
+      const end = (cumulative / total) * 100;
+      return { ...d, start, end };
+    });
+
+    const stops = [];
+    segs.forEach((seg, i) => {
+      const isFirst = i === 0;
+      const isLast = i === segs.length - 1;
+      const segStart = isFirst ? seg.start : seg.start + DIVIDER_GAP / 2;
+      const segEnd = isLast ? seg.end : seg.end - DIVIDER_GAP / 2;
+      stops.push(`${seg.color} ${segStart}% ${segEnd}%`);
+      if (!isLast) {
+        stops.push(`${DIVIDER_COLOR} ${segEnd}% ${segEnd + DIVIDER_GAP}%`);
+      }
+    });
+    gradient = `conic-gradient(${stops.join(", ")})`;
+  }
 
   return (
     <div className="pie-chart-wrap">
@@ -1814,7 +2012,7 @@ function InvoiceModal({ onClose, transactions, wallets }) {
                   {rows.map((t) => (
                     <tr key={t.id}>
                       <td>{formatDateID(t.date)}</td>
-                      <td>{t.category}{t.type === "income" ? " (Masuk)" : " (Keluar)"}</td>
+                      <td>{t.category}</td>
                       <td>{walletMap[t.walletId]?.name || "-"}</td>
                       <td>{t.note || "-"}</td>
                       <td className={`al-right ${t.type}`}>{t.type === "income" ? "+" : "-"}{formatRupiah(t.amount)}</td>
@@ -1855,7 +2053,7 @@ function InvoiceModal({ onClose, transactions, wallets }) {
 /*  Reports page                                                           */
 /* ---------------------------------------------------------------------- */
 
-function ReportsPage({ transactions, wallets, incomeCategories, expenseCategories, budgets }) {
+function ReportsPage({ transactions, wallets, incomeCategories, expenseCategories, budgets, categoryColors }) {
   const [periodType, setPeriodType] = useState("monthly"); // daily | weekly | monthly | custom
   const [anchorDate, setAnchorDate] = useState(todayStr());
   const [monthValue, setMonthValue] = useState(todayStr().slice(0, 7));
@@ -1900,7 +2098,7 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
   });
   const incomeRows = Object.entries(incomeByCategory).sort((a, b) => b[1] - a[1]);
 
-  const pieData = expenseRows.map(([cat, amt]) => ({ name: cat, value: amt, color: colorForCategory(cat, expenseCategories) }));
+  const pieData = expenseRows.map(([cat, amt]) => ({ name: cat, value: amt, color: colorForCategory(cat, expenseCategories, "expense", categoryColors) }));
 
   return (
     <div className="page">
@@ -1994,7 +2192,7 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
           {expenseRows.length === 0 && <p className="muted">Belum ada data.</p>}
           {expenseRows.map(([cat, amt]) => (
             <div className="breakdown-row" key={cat}>
-              <span className="breakdown-dot" style={{ background: colorForCategory(cat, expenseCategories) }} />
+              <span className="breakdown-dot" style={{ background: colorForCategory(cat, expenseCategories, "expense", categoryColors) }} />
               <span className="breakdown-name">{cat}</span>
               <span className="breakdown-amount">{formatRupiah(amt)}</span>
             </div>
@@ -2005,7 +2203,7 @@ function ReportsPage({ transactions, wallets, incomeCategories, expenseCategorie
           {incomeRows.length === 0 && <p className="muted">Belum ada data.</p>}
           {incomeRows.map(([cat, amt]) => (
             <div className="breakdown-row" key={cat}>
-              <span className="breakdown-dot" style={{ background: colorForCategory(cat, incomeCategories) }} />
+              <span className="breakdown-dot" style={{ background: colorForCategory(cat, incomeCategories, "income", categoryColors) }} />
               <span className="breakdown-name">{cat}</span>
               <span className="breakdown-amount">{formatRupiah(amt)}</span>
             </div>
@@ -2466,7 +2664,7 @@ function FontStyles() {
 
       .main-area { flex: 1; padding: 28px 34px 90px; max-width: 900px; width: 100%; }
       .page { display: flex; flex-direction: column; gap: 18px; }
-      .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
       .brand-suffix { font-size: 0.55em; font-weight: 500; opacity: 0.7; }
       .tagline { font-size: 12.5px; color: var(--ink-soft); margin: 4px 0 0; }
 
@@ -2655,7 +2853,7 @@ function FontStyles() {
       .category-row:last-child { border-bottom: none; }
       .category-row-top { display: flex; align-items: center; gap: 10px; }
       .category-row-main { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
-      .category-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+      .category-dot-btn { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.08); padding: 0; cursor: pointer; flex-shrink: 0; }
       .category-name { font-size: 13.5px; font-weight: 600; }
       .category-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
       .category-budget { margin-top: 10px; padding: 12px 13px; background: #FCFAF2; border: 1px solid var(--line); border-radius: 10px; }
@@ -2709,6 +2907,20 @@ function FontStyles() {
       .invoice-summary-row b.income { color: #3D6B4B; }
       .invoice-summary-row b.expense { color: #A23E2E; }
       .invoice-footer { margin-top: 22px; font-size: 10.5px; color: #999; text-align: center; }
+
+      .detail-list { display: flex; flex-direction: column; margin-bottom: 6px; }
+      .detail-date-divider {
+        font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.03em; padding: 14px 0 6px;
+      }
+      .detail-date-divider:first-child { padding-top: 0; }
+      .detail-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee0c8; }
+      .detail-row:last-child { border-bottom: none; }
+      .detail-row-main { flex: 1; min-width: 0; }
+      .detail-category { font-size: 14.5px; font-weight: 700; color: #1a1a1a; }
+      .detail-sub { font-size: 12px; color: #888; margin-top: 3px; }
+      .detail-amount { font-size: 15px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+      .detail-amount.income { color: #3D6B4B; }
+      .detail-amount.expense { color: #A23E2E; }
 
       @media print {
         body * { visibility: hidden; }
